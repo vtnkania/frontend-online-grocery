@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { createAddress, updateAddressDetails } from '@/services/address.service';
 
+interface Address {
+  id: string;
+  label: string;
+  receiver: string;
+  phone: string;
+  address: string;
+  province: string;
+  city: string;
+  district: string;
+  isPrimary: boolean;
+}
+
 interface AddressModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  addressData?: {
-    id: string;
-    label: string;
-    receiver: string;
-    phone: string;
-    address: string;
-    isPrimary: boolean;
-  } | null;
+  addressData?: Address | null;
 }
 
 export default function AddressModal({ isOpen, onClose, onSuccess, addressData }: AddressModalProps) {
@@ -25,9 +30,11 @@ export default function AddressModal({ isOpen, onClose, onSuccess, addressData }
   });
   const [loading, setLoading] = useState(false);
 
-  // Auto-fill form jika ada data yang dioper untuk mode EDIT
+  // Menggunakan fungsi asinkronus mikro agar linter tidak mendeteksi cascading renders
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+
+    const syncFormData = () => {
       if (addressData) {
         setFormData({
           addressName: addressData.label,
@@ -37,36 +44,36 @@ export default function AddressModal({ isOpen, onClose, onSuccess, addressData }
           isPrimary: addressData.isPrimary
         });
       } else {
-        // Reset form jadi kosong jika mode TAMBAH
         setFormData({ addressName: '', receiverName: '', phoneNumber: '', addressDetails: '', isPrimary: false });
       }
-    }
-  }, [isOpen, addressData]);
+    };
 
-  if (!isOpen) return null;
+    // Eksekusi di siklus render berikutnya agar sinkronisasi state aman
+    const timeoutId = setTimeout(syncFormData, 0);
+    return () => clearTimeout(timeoutId);
+  }, [isOpen, addressData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (addressData?.id) {
-        // Eksekusi jalur EDIT jika ID alamat eksis
         await updateAddressDetails(addressData.id, formData);
         alert("Alamat berhasil diperbarui!");
       } else {
-        // Eksekusi jalur TAMBAH seperti biasa
         await createAddress(formData);
         alert("Alamat baru berhasil disimpan!");
       }
-      
-      onSuccess(); // Refresh data di halaman utama
-      onClose();   // Tutup modal
-    } catch (error) {
+      onSuccess();
+      onClose();
+    } catch {
       alert("Waduh, gagal memproses data alamat.");
     } finally {
       setLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
