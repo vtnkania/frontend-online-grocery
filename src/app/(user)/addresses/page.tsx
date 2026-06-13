@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getUserAddresses } from '@/services/address.service'; // Path import disesuaikan
+import { getUserAddresses } from '@/services/address.service';
+import AddressModal from './components/AddressModal'; // Impor modal baru kita
 
 interface Address {
   id: string;
@@ -18,13 +19,21 @@ interface Address {
 export default function AddressesPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
+  // Fungsi untuk menarik data dari API Backend
+  const fetchInitialData = async () => {
+    try {
       const data = await getUserAddresses();
       setAddresses(data);
+    } catch (error) {
+      console.error(error);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     fetchInitialData();
   }, []);
 
@@ -37,12 +46,16 @@ export default function AddressesPage() {
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">Daftar Alamat</h1>
             <p className="text-xs md:text-sm text-gray-500">Kelola alamat pengiriman belanjaan online kamu</p>
           </div>
-          <button className="w-full sm:w-auto px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition active:scale-95">
+          {/* Tambahkan onClick untuk membuka modal */}
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="w-full sm:w-auto px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition active:scale-95 shadow-sm"
+          >
             + Tambah Alamat Baru
           </button>
         </div>
 
-        {/* State Management */}
+        {/* State Loading / Empty / Content */}
         {loading ? (
           <div className="text-center py-8 text-sm text-gray-500 animate-pulse">
             Memuat data alamat dari server...
@@ -90,6 +103,13 @@ export default function AddressesPage() {
           </div>
         )}
       </div>
+
+      {/* Tampilkan Pop-up Modal Form di sini */}
+      <AddressModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={fetchInitialData} // Jika sukses, panggil fungsi refresh data
+      />
     </div>
   );
 }
