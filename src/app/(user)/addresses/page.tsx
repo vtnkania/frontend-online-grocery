@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getUserAddresses } from '@/services/address.service';
 import AddressModal from './components/AddressModal'; // Impor modal baru kita
+import { getUserAddresses, setPrimaryAddress } from '@/services/address.service';
 
 interface Address {
   id: string;
@@ -33,6 +33,17 @@ export default function AddressesPage() {
     }
   };
 
+  // Fungsi untuk mengubah alamat aktif menjadi alamat utama
+  const handleSetPrimary = async (addressId: string) => {
+    try {
+      await setPrimaryAddress(addressId);
+      // Panggil kembali data dari backend agar lencana "Utama" langsung berpindah secara real-time
+      fetchInitialData(); 
+    } catch (error) {
+      alert("Gagal mengubah alamat utama, coba lagi nanti.");
+    }
+  };
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -46,7 +57,7 @@ export default function AddressesPage() {
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">Daftar Alamat</h1>
             <p className="text-xs md:text-sm text-gray-500">Kelola alamat pengiriman belanjaan online kamu</p>
           </div>
-          {/* Tambahkan onClick untuk membuka modal */}
+          {/* Tombol untuk membuka modal */}
           <button 
             onClick={() => setIsModalOpen(true)}
             className="w-full sm:w-auto px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition active:scale-95 shadow-sm"
@@ -91,7 +102,10 @@ export default function AddressesPage() {
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4 mt-4 border-t pt-3 border-gray-100 text-xs md:text-sm font-medium">
                   {!addr.isPrimary && (
-                    <button className="text-green-600 hover:text-green-700 active:underline">
+                    <button 
+                      onClick={() => handleSetPrimary(addr.id)}
+                      className="text-green-600 hover:text-green-700 active:underline transition"
+                    >
                       Atur Jadi Utama
                     </button>
                   )}
@@ -108,7 +122,7 @@ export default function AddressesPage() {
       <AddressModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        onSuccess={fetchInitialData} // Jika sukses, panggil fungsi refresh data
+        onSuccess={fetchInitialData} 
       />
     </div>
   );

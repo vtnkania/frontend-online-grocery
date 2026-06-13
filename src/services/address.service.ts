@@ -1,5 +1,6 @@
 const NEXT_PUBLIC_API_URL = 'http://localhost:3000/api/v1';
 
+// 1. Ambil Semua Alamat
 export const getUserAddresses = async () => {
   try {
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses`, {
@@ -19,6 +20,7 @@ export const getUserAddresses = async () => {
   }
 };
 
+// 2. Tambah Alamat Baru
 export const createAddress = async (data: {
   addressName: string;
   receiverName: string;
@@ -27,7 +29,7 @@ export const createAddress = async (data: {
   isPrimary: boolean;
 }) => {
   try {
-    const response = await fetch("http://localhost:3000/api/v1/addresses", {
+    const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -42,6 +44,28 @@ export const createAddress = async (data: {
     return await response.json();
   } catch (error) {
     console.error("Error createAddress service:", error);
+    throw error;
+  }
+};
+
+// 3. Atur Alamat Utama (Diubah ke PATCH agar sesuai standar parsial update Express)
+export const setPrimaryAddress = async (addressId: string) => {
+  try {
+    const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
+      method: "PATCH", 
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ isPrimary: true }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Gagal mengubah alamat utama");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error setPrimaryAddress service:", error);
     throw error;
   }
 };
