@@ -69,3 +69,50 @@ export const setPrimaryAddress = async (addressId: string) => {
     throw error;
   }
 };
+
+export const deleteAddress = async (addressId: string) => {
+  try {
+    const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Gagal menghapus alamat");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error deleteAddress service:", error);
+    throw error;
+  }
+};
+
+export const updateAddressDetails = async (addressId: string, data: {
+  addressName: string;
+  receiverName: string;
+  phoneNumber: string;
+  addressDetails: string;
+  isPrimary: boolean;
+}) => {
+  try {
+    const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error("Gagal memperbarui alamat");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updateAddressDetails service:", error);
+    throw error;
+  }
+};

@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
-import { createAddress } from '@/services/address.service';
+import React, { useState, useEffect } from 'react';
+import { createAddress, updateAddressDetails } from '@/services/address.service';
 
 interface AddressModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  addressData?: {
+    id: string;
+    label: string;
+    receiver: string;
+    phone: string;
+    address: string;
+    isPrimary: boolean;
+  } | null;
 }
 
-export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModalProps) {
+export default function AddressModal({ isOpen, onClose, onSuccess, addressData }: AddressModalProps) {
   const [formData, setFormData] = useState({
     addressName: '',
     receiverName: '',
@@ -17,19 +25,44 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
   });
   const [loading, setLoading] = useState(false);
 
+  // Auto-fill form jika ada data yang dioper untuk mode EDIT
+  useEffect(() => {
+    if (isOpen) {
+      if (addressData) {
+        setFormData({
+          addressName: addressData.label,
+          receiverName: addressData.receiver,
+          phoneNumber: addressData.phone,
+          addressDetails: addressData.address,
+          isPrimary: addressData.isPrimary
+        });
+      } else {
+        // Reset form jadi kosong jika mode TAMBAH
+        setFormData({ addressName: '', receiverName: '', phoneNumber: '', addressDetails: '', isPrimary: false });
+      }
+    }
+  }, [isOpen, addressData]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await createAddress(formData);
-      alert("Alamat berhasil disimpan!");
+      if (addressData?.id) {
+        // Eksekusi jalur EDIT jika ID alamat eksis
+        await updateAddressDetails(addressData.id, formData);
+        alert("Alamat berhasil diperbarui!");
+      } else {
+        // Eksekusi jalur TAMBAH seperti biasa
+        await createAddress(formData);
+        alert("Alamat baru berhasil disimpan!");
+      }
+      
       onSuccess(); // Refresh data di halaman utama
       onClose();   // Tutup modal
-      setFormData({ addressName: '', receiverName: '', phoneNumber: '', addressDetails: '', isPrimary: false });
     } catch (error) {
-      alert("Waduh, gagal menyimpan alamat.");
+      alert("Waduh, gagal memproses data alamat.");
     } finally {
       setLoading(false);
     }
@@ -39,7 +72,9 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 animate-fade-in">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-gray-800">Tambah Alamat Baru</h3>
+          <h3 className="text-lg font-bold text-gray-800">
+            {addressData ? 'Ubah Alamat' : 'Tambah Alamat Baru'}
+          </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
         </div>
         
@@ -107,7 +142,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess }: AddressModa
               type="submit" disabled={loading}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg text-sm font-medium transition"
             >
-              {loading ? 'Menyimpan...' : 'Simpan Alamat'}
+              {loading ? 'Menyimpan...' : addressData ? 'Simpan Perubahan' : 'Simpan Alamat'}
             </button>
           </div>
         </form>

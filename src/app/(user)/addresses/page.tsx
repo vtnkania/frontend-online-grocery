@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import AddressModal from './components/AddressModal'; // Impor modal baru kita
-import { getUserAddresses, setPrimaryAddress } from '@/services/address.service';
+import AddressModal from './components/AddressModal';
+import { getUserAddresses, setPrimaryAddress, deleteAddress } from '@/services/address.service';
 
 interface Address {
   id: string;
@@ -20,6 +20,7 @@ export default function AddressesPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
   // Fungsi untuk menarik data dari API Backend
   const fetchInitialData = async () => {
@@ -42,6 +43,30 @@ export default function AddressesPage() {
     } catch (error) {
       alert("Gagal mengubah alamat utama, coba lagi nanti.");
     }
+  };
+
+  // Fungsi untuk menghapus alamat yang dipilih
+  const handleDelete = async (addressId: string, isPrimary: boolean) => {
+    // Proteksi: Alamat utama tidak boleh dihapus secara tidak sengaja
+    if (isPrimary) {
+      alert("Alamat utama tidak boleh dihapus! Atur alamat lain sebagai utama terlebih dahulu.");
+      return;
+    }
+
+    const konfirmasi = confirm("Apakah kamu yakin ingin menghapus alamat ini?");
+    if (!konfirmasi) return;
+
+    try {
+      await deleteAddress(addressId);
+      fetchInitialData(); // Refresh data secara real-time dari database
+    } catch (error) {
+      alert("Gagal menghapus alamat, coba lagi nanti.");
+    }
+  };
+
+  const handleEditClick = (address: Address) => {
+    setSelectedAddress(address); // Simpan data alamat yang dipilih ke state
+    setIsModalOpen(true);        // Buka modalnya
   };
 
   useEffect(() => {
@@ -109,8 +134,18 @@ export default function AddressesPage() {
                       Atur Jadi Utama
                     </button>
                   )}
-                  <button className="text-gray-600 hover:text-gray-800">Ubah</button>
-                  <button className="text-red-500 hover:text-red-600">Hapus</button>
+                  <button 
+                    onClick={() => handleEditClick(addr)}
+                  className="text-gray-600 hover:text-gray-800 transition active:underline"
+                  >
+                    Ubah
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(addr.id, addr.isPrimary)} 
+                    className="text-red-500 hover:text-red-600 active:underline transition"
+                  >
+                    Hapus
+                  </button>
                 </div>
               </div>
             ))}
@@ -120,10 +155,14 @@ export default function AddressesPage() {
 
       {/* Tampilkan Pop-up Modal Form di sini */}
       <AddressModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSuccess={fetchInitialData} 
-      />
+    isOpen={isModalOpen} 
+    onClose={() => {
+      setIsModalOpen(false);
+      setSelectedAddress(null); // Reset kembali ke null saat ditutup
+    }} 
+    onSuccess={fetchInitialData} 
+    addressData={selectedAddress} // <-- Kita oper data alamat yang mau diedit ke komponen Modal
+  />
     </div>
   );
 }
