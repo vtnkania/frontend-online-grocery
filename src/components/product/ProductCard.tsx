@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { addToCart } from '@/services/cart.service';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProductCardProps {
   product: {
@@ -16,8 +17,13 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, storeId, stock }: ProductCardProps) {
   const [loading, setLoading] = useState(false);
+  const user = useAuth((state) => state.user);
 
   const handleAddToCart = async () => {
+    if (!user?.isVerified) {
+      alert('Login dan verifikasi email terlebih dahulu untuk memakai keranjang.');
+      return;
+    }
     try {
       setLoading(true);
       await addToCart(product.id, storeId, 1);
@@ -30,6 +36,7 @@ export default function ProductCard({ product, storeId, stock }: ProductCardProp
   };
 
   const isOutOfStock = stock <= 0;
+  const isAuthBlocked = !user?.isVerified;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex flex-col justify-between h-full">
@@ -50,11 +57,12 @@ export default function ProductCard({ product, storeId, stock }: ProductCardProp
         {/* Tombol Add to Cart dengan proteksi pengecekan ketersediaan stok */}
         <button
           onClick={handleAddToCart}
-          disabled={loading || isOutOfStock}
+          disabled={loading || isOutOfStock || isAuthBlocked}
           className="w-full py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition active:scale-[0.98]"
         >
-          {loading ? 'Memproses...' : isOutOfStock ? 'Stok Habis' : '+ Keranjang'}
+          {loading ? 'Memproses...' : isOutOfStock ? 'Stok Habis' : isAuthBlocked ? 'Verifikasi Dulu' : '+ Keranjang'}
         </button>
+        {isAuthBlocked && <p className="text-[11px] text-amber-700">Akun terverifikasi diperlukan.</p>}
       </div>
     </div>
   );
