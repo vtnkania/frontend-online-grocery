@@ -1,15 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { toast } from 'sonner';
 import { addToCart } from '@/services/cart.service';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ProductCardProps {
   product: {
     id: string;
+    slug?: string;
     name: string;
     price: string;
-    imageUrl?: string;
+    imageUrl?: string | null;
   };
   storeId: string; // Wajib dikirim dari halaman landing page terdekat
   stock: number;   // Diambil dari data inventory toko cabang tersebut
@@ -21,15 +24,15 @@ export default function ProductCard({ product, storeId, stock }: ProductCardProp
 
   const handleAddToCart = async () => {
     if (!user?.isVerified) {
-      alert('Login dan verifikasi email terlebih dahulu untuk memakai keranjang.');
+      toast.error('Login dan verifikasi email terlebih dahulu untuk memakai keranjang.');
       return;
     }
     try {
       setLoading(true);
       await addToCart(product.id, storeId, 1);
-      alert('Produk berhasil dimasukkan ke keranjang!');
+      toast.success('Produk berhasil dimasukkan ke keranjang.');
     } catch {
-      alert('Waduh, gagal menambahkan produk ke keranjang.');
+      toast.error('Gagal menambahkan produk ke keranjang.');
     } finally {
       setLoading(false);
     }
@@ -41,11 +44,14 @@ export default function ProductCard({ product, storeId, stock }: ProductCardProp
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex flex-col justify-between h-full">
       <div>
-        {/* Placeholder Gambar Produk */}
-        <div className="w-full h-40 bg-gray-100 rounded-lg mb-3 border border-gray-100 flex items-center justify-center text-gray-400 text-xs">
-          {product.imageUrl ? 'Image' : 'No Image'}
-        </div>
-        <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 mb-1">{product.name}</h3>
+        <Link href={product.slug ? `/products/${product.slug}` : "/products"} className="block">
+          {product.imageUrl ? (
+            <img className="mb-3 h-40 w-full rounded-lg border border-gray-100 object-cover" src={product.imageUrl} alt={product.name} />
+          ) : (
+            <div className="w-full h-40 bg-gray-100 rounded-lg mb-3 border border-gray-100 flex items-center justify-center text-gray-400 text-xs">No Image</div>
+          )}
+          <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 mb-1 hover:text-emerald-700">{product.name}</h3>
+        </Link>
         <p className="text-xs text-gray-400 mb-2">Stok: {stock > 0 ? stock : 'Habis'}</p>
       </div>
 
