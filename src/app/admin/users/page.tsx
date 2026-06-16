@@ -1,3 +1,5 @@
+import AdminListPlaceholder from "@/components/admin/AdminListPlaceholder";
+
 export default function AdminUsersPage() {
-  return <section className="p-8">Admin users are being prepared.</section>;
+  return <AdminListPlaceholder title="User Management" subtitle="Review customer and admin accounts with role-aware controls." />;
 }
