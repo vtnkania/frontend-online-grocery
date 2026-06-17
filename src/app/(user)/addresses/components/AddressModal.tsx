@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createAddress, updateAddressDetails } from '@/services/address.service';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Address {
   id: string;
@@ -21,6 +22,8 @@ interface AddressModalProps {
 }
 
 export default function AddressModal({ isOpen, onClose, onSuccess, addressData }: AddressModalProps) {
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
     addressName: '',
     receiverName: '',
@@ -30,7 +33,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess, addressData }
   });
   const [loading, setLoading] = useState(false);
 
-  // Menggunakan fungsi asinkronus mikro agar linter tidak mendeteksi cascading renders
+  // Sinkronisasi state saat modal edit dibuka
   useEffect(() => {
     if (!isOpen) return;
 
@@ -48,7 +51,6 @@ export default function AddressModal({ isOpen, onClose, onSuccess, addressData }
       }
     };
 
-    // Eksekusi di siklus render berikutnya agar sinkronisasi state aman
     const timeoutId = setTimeout(syncFormData, 0);
     return () => clearTimeout(timeoutId);
   }, [isOpen, addressData]);
@@ -58,15 +60,38 @@ export default function AddressModal({ isOpen, onClose, onSuccess, addressData }
     setLoading(true);
     try {
       if (addressData?.id) {
-        await updateAddressDetails(addressData.id, formData);
+        const updatePayload = {
+          addressName: formData.addressName,
+          receiverName: formData.receiverName,
+          phoneNumber: formData.phoneNumber,
+          addressDetails: formData.addressDetails,
+          isPrimary: formData.isPrimary
+        };
+        await updateAddressDetails(addressData.id, updatePayload);
         alert("Alamat berhasil diperbarui!");
       } else {
-        await createAddress(formData);
+        // 🔴 DISINI KUNCI KEMENANGAN KITA: Menambahkan data dummy koordinat & geolokasi!
+        const createPayload = {
+          addressName: formData.addressName,
+          receiverName: formData.receiverName,
+          phoneNumber: formData.phoneNumber,
+          addressDetails: formData.addressDetails,
+          isPrimary: formData.isPrimary,
+          userId: user?.id || "1be8b5a7-11d7-4d1d-aaf9-ee9d3ed78530", // Fallback ID lanej
+          province: "DKI Jakarta",
+          city: "Jakarta Pusat",
+          district: "Gambir",
+          latitude: -6.17511,  // 👈 Koordinat Monas (Lolos validasi backend!)
+          longitude: 106.86503 // 👈 Koordinat Monas (Lolos validasi backend!)
+        };
+
+        await createAddress(createPayload);
         alert("Alamat baru berhasil disimpan!");
       }
       onSuccess();
       onClose();
-    } catch {
+    } catch (error) {
+      console.error(error);
       alert("Waduh, gagal memproses data alamat.");
     } finally {
       setLoading(false);

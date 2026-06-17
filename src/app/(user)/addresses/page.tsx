@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import AddressModal from './components/AddressModal';
 import { getUserAddresses, setPrimaryAddress, deleteAddress } from '@/services/address.service';
+import { useAuth } from '@/hooks/useAuth'; // Import hook untuk mengambil data user login
 
 interface Address {
   id: string;
@@ -14,15 +15,16 @@ interface Address {
   city: string;
   district: string;
   isPrimary: boolean;
+  userId: string; // Tambahkan properti userId pada interface data
 }
 
 export default function AddressesPage() {
+  const { user } = useAuth(); // Ambil state user aktif dari Zustand Kania
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
-  // Fungsi refresh halaman instan yang diakui aman oleh semua jenis linter React
   const refreshPageData = () => {
     window.location.reload();
   };
@@ -58,12 +60,14 @@ export default function AddressesPage() {
     setIsModalOpen(true);
   };
 
-  // Fungsi fetch diisolasi penuh di dalam Effect agar linter tidak mendeteksi kebocoran render
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         const data = await getUserAddresses();
-        setAddresses(data);
+        
+        // Ganti (addr: any) menjadi (addr: Address) agar linter tersenyum lebar! 😊
+        const userOnlyAddresses = data.filter((addr: Address) => addr.userId === user?.id);
+        setAddresses(userOnlyAddresses);
       } catch {
         // Catch bersih
       } finally {
@@ -71,8 +75,10 @@ export default function AddressesPage() {
       }
     };
 
-    fetchInitialData();
-  }, []); 
+    if (user?.id) {
+      fetchInitialData();
+    }
+  }, [user]); // Jalankan ulang effect apabila status data user berhasil di-load
 
   return (
     <div className="w-full min-h-screen bg-gray-50 p-4 md:p-8">
@@ -121,7 +127,7 @@ export default function AddressesPage() {
                 <p className="text-sm font-medium text-gray-950 mb-0.5">{addr.receiver}</p>
                 <p className="text-xs md:text-sm text-gray-500 mb-2">{addr.phone}</p>
                 <p className="text-xs md:text-sm text-gray-600 leading-relaxed bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                  {addr.address}, Kec. {addr.district}, {addr.city}, {addr.province}
+                  {addr.address}
                 </p>
 
                 {/* Action Buttons */}

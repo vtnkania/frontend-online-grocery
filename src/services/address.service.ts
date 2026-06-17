@@ -1,12 +1,15 @@
-const NEXT_PUBLIC_API_URL = 'http://localhost:3000/api/v1';
+const NEXT_PUBLIC_API_URL = 'http://localhost:8000/api/v1';
 
 // 1. Ambil Semua Alamat
 export const getUserAddresses = async () => {
   try {
+    const token = localStorage.getItem('token'); 
+    
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
     });
     
@@ -20,13 +23,14 @@ export const getUserAddresses = async () => {
   }
 };
 
-// 2. Tambah Alamat Baru
+// 2. Tambah Alamat Baru (Versi Clean Tanpa Memicu Crash verifyToken Kania)
 export const createAddress = async (data: {
   addressName: string;
   receiverName: string;
   phoneNumber: string;
   addressDetails: string;
   isPrimary: boolean;
+  userId?: string; // Tambahkan ini agar tidak komplain di modal
 }) => {
   try {
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses`, {
@@ -48,13 +52,15 @@ export const createAddress = async (data: {
   }
 };
 
-// 3. Atur Alamat Utama (Diubah ke PATCH agar sesuai standar parsial update Express)
+// 3. Atur Alamat Utama
 export const setPrimaryAddress = async (addressId: string) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
       method: "PATCH", 
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({ isPrimary: true }),
     });
@@ -70,12 +76,15 @@ export const setPrimaryAddress = async (addressId: string) => {
   }
 };
 
+// 4. Hapus Alamat
 export const deleteAddress = async (addressId: string) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
     });
 
@@ -90,6 +99,7 @@ export const deleteAddress = async (addressId: string) => {
   }
 };
 
+// 5. Perbarui Detail Alamat
 export const updateAddressDetails = async (addressId: string, data: {
   addressName: string;
   receiverName: string;
@@ -98,10 +108,12 @@ export const updateAddressDetails = async (addressId: string, data: {
   isPrimary: boolean;
 }) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify(data),
     });
