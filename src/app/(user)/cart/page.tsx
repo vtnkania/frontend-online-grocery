@@ -3,12 +3,23 @@
 import { useEffect, useState } from 'react';
 import { getUserCart, updateCartQty, deleteCartItem } from '@/services/cart.service';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface CartItem {
   id: string;
   quantity: number;
   priceSnapshot: string;
-  product: { name: string; imageUrl: string; price: string };
+  product: { 
+    id: string;
+    name: string; 
+    slug: string; 
+    price: string;
+    stock?: number;
+    productImages?: {
+      id: string;
+      url: string;
+    }[];
+  };
 }
 
 export default function CartPage() {
@@ -16,29 +27,35 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Memicu siklus render ulang data dari server secara asinkronus aman
   const triggerRefresh = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  // Fungsi fetch diisolasi penuh di dalam Effect agar terbebas dari cascading renders
   useEffect(() => {
     const fetchCartData = async () => {
       try {
         const res = await getUserCart();
         setCartItems(res.items || []);
       } catch {
-        // Menjaga linter bersih tanpa variabel kosong
+        // Linter clean
       } finally {
         setLoading(false);
       }
     };
-
     fetchCartData();
-  }, [refreshTrigger]); // Otomatis reload data setiap kali refreshTrigger berubah
+  }, [refreshTrigger]);
 
-  const handleQtyChange = async (id: string, currentQty: number, delta: number) => {
+  const handleQtyChange = async (id: string, currentQty: number, delta: number, maxStock: number) => {
     const targetQty = currentQty + delta;
+    
+    // Fallback jika backend belum mengirim data stock, beri batas default aman
+    const limitStock = maxStock !== undefined ? maxStock : 99;
+
+    if (delta > 0 && targetQty > limitStock) {
+      alert(`Waduh, tidak bisa menambah barang. Stok di gudang toko hanya sisa ${limitStock} item.`);
+      return;
+    }
+
     try {
       if (targetQty <= 0) {
         if (confirm('Hapus produk ini dari keranjang?')) {
@@ -47,9 +64,9 @@ export default function CartPage() {
       } else {
         await updateCartQty(id, targetQty);
       }
-      triggerRefresh(); // Jalankan pemicu refresh setelah update berhasil
+      triggerRefresh();
     } catch {
-      alert('Gagal memperbarui keranjang belanja.');
+      alert('Gagal memperbarui jumlah keranjang belanja.');
     }
   };
 
@@ -73,29 +90,49 @@ export default function CartPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* List Item */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-4">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between border-b last:border-0 pb-4 last:pb-0 border-gray-100 gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 border border-gray-200" />
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900">{item.product.name}</h3>
-                      <p className="text-xs text-gray-500">Rp {Number(item.priceSnapshot).toLocaleString('id-ID')}</p>
+              {cartItems.map((item) => {
+                const prod = item.product;
+                
+                // 100% DINAMIS: Ambil gambar ke-1 dari database hasil include backend.
+                // Jika data gambar belum di-include backend, otomatis pakai gambar placeholder lokal.
+                const realImageUrl = prod.productImages && prod.productImages.length > 0 
+                  ? prod.productImages[0].url 
+                  : '/placeholder-grocery.png'; 
+
+                // 100% DINAMIS: Ambil stock asli, jika belum di-include backend tampilkan "-"
+                const displayStock = prod.stock !== undefined ? prod.stock : '-';
+
+                return (
+                  <div key={item.id} className="flex items-center justify-between border-b last:border-0 pb-4 last:pb-0 border-gray-100 gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 relative flex-shrink-0 border border-gray-200 rounded-lg overflow-hidden bg-gray-100">
+                        <Image 
+                          src={realImageUrl} 
+                          alt={prod.name}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">{prod.name}</h3>
+                        <p className="text-xs text-gray-500">Rp {Number(item.priceSnapshot).toLocaleString('id-ID')}</p>
+                        <p className="text-[11px] text-orange-600 font-medium">Sisa Stok Gudang: {displayStock}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-2 py-1">
+                      <button onClick={() => handleQtyChange(item.id, item.quantity, -1, Number(prod.stock || 0))} className="text-gray-500 hover:text-gray-700 font-bold px-1 text-sm">-</button>
+                      <span className="text-sm font-medium text-gray-800 w-6 text-center">{item.quantity}</span>
+                      <button onClick={() => handleQtyChange(item.id, item.quantity, 1, Number(prod.stock || 0))} className="text-gray-500 hover:text-gray-700 font-bold px-1 text-sm">+</button>
                     </div>
                   </div>
-                  
-                  {/* Plus Minus Controls */}
-                  <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-2 py-1">
-                    <button onClick={() => handleQtyChange(item.id, item.quantity, -1)} className="text-gray-500 hover:text-gray-700 font-bold px-1 text-sm">-</button>
-                    <span className="text-sm font-medium text-gray-800 w-6 text-center">{item.quantity}</span>
-                    <button onClick={() => handleQtyChange(item.id, item.quantity, 1)} className="text-gray-500 hover:text-gray-700 font-bold px-1 text-sm">+</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Total Summary Block */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-4">
               <div className="flex justify-between items-center border-b pb-3 border-gray-100">
                 <span className="text-sm text-gray-600">Total Harga Barang</span>

@@ -1,3 +1,5 @@
+import AdminListPlaceholder from "@/components/admin/AdminListPlaceholder";
+
 export default function AdminOrdersPage() {
-  return <section className="p-8">Admin orders are being prepared.</section>;
+  return <AdminListPlaceholder title="Order Management" subtitle="Track customer orders with admin filtering and sorting." />;
 }

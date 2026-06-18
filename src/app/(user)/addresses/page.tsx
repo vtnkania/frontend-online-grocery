@@ -15,11 +15,11 @@ interface Address {
   city: string;
   district: string;
   isPrimary: boolean;
-  userId: string; // Tambahkan properti userId pada interface data
+  userId: string; // Properti userId pada interface data
 }
 
 export default function AddressesPage() {
-  const { user } = useAuth(); // Ambil state user aktif dari Zustand Kania
+  const { user } = useAuth(); // Ambil state user aktif dari Zustand
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,8 +30,9 @@ export default function AddressesPage() {
   };
 
   const handleSetPrimary = async (addressId: string) => {
+    if (!user || !user.id) return;
     try {
-      await setPrimaryAddress(addressId);
+      await setPrimaryAddress(addressId, user.id); // Melemparkan data user.id secara dinamis
       refreshPageData(); 
     } catch {
       alert("Gagal mengubah alamat utama, coba lagi nanti.");
@@ -39,6 +40,7 @@ export default function AddressesPage() {
   };
 
   const handleDelete = async (addressId: string, isPrimary: boolean) => {
+    if (!user || !user.id) return;
     if (isPrimary) {
       alert("Alamat utama tidak boleh dihapus! Atur alamat lain sebagai utama terlebih dahulu.");
       return;
@@ -48,7 +50,7 @@ export default function AddressesPage() {
     if (!konfirmasi) return;
 
     try {
-      await deleteAddress(addressId);
+      await deleteAddress(addressId, user.id); // Melemparkan data user.id secara dinamis
       refreshPageData(); 
     } catch {
       alert("Gagal menghapus alamat, coba lagi nanti.");
@@ -62,23 +64,24 @@ export default function AddressesPage() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
+      // 💡 Pastikan fungsi hanya jalan jika user.id valid dan ada
+      if (!user || !user.id) return; 
+
       try {
-        const data = await getUserAddresses();
+        const data = await getUserAddresses(user.id); // Melemparkan user.id ke service frontend
         
-        // Ganti (addr: any) menjadi (addr: Address) agar linter tersenyum lebar! 😊
-        const userOnlyAddresses = data.filter((addr: Address) => addr.userId === user?.id);
+        // Filter alamat agar yang tampil hanya milik user aktif
+        const userOnlyAddresses = data.filter((addr: Address) => addr.userId === user.id);
         setAddresses(userOnlyAddresses);
-      } catch {
-        // Catch bersih
+      } catch (error) {
+        console.error("Gagal memuat alamat:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (user?.id) {
-      fetchInitialData();
-    }
-  }, [user]); // Jalankan ulang effect apabila status data user berhasil di-load
+    fetchInitialData();
+  }, [user]);
 
   return (
     <div className="w-full min-h-screen bg-gray-50 p-4 md:p-8">

@@ -1,3 +1,5 @@
+import AdminListPlaceholder from "@/components/admin/AdminListPlaceholder";
+
 export default function AdminStoresPage() {
-  return <section className="p-8">Admin stores are being prepared.</section>;
+  return <AdminListPlaceholder title="Store Management" subtitle="Manage branch visibility, status, and fulfillment locations." />;
 }

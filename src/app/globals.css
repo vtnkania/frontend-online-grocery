@@ -128,3 +128,9 @@
     @apply font-sans;
   }
 }
+
+@layer components {
+  .input-admin {
+    @apply min-h-12 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100;
+  }
+}
