@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import AddressModal from './components/AddressModal';
 import { getUserAddresses, setPrimaryAddress, deleteAddress } from '@/services/address.service';
+import { useAuth } from '@/hooks/useAuth'; // Import hook untuk mengambil data user login
 
 interface Address {
   id: string;
@@ -14,22 +15,24 @@ interface Address {
   city: string;
   district: string;
   isPrimary: boolean;
+  userId: string; // Properti userId pada interface data
 }
 
 export default function AddressesPage() {
+  const { user } = useAuth(); // Ambil state user aktif dari Zustand
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
-  // Fungsi refresh halaman instan yang diakui aman oleh semua jenis linter React
   const refreshPageData = () => {
     window.location.reload();
   };
 
   const handleSetPrimary = async (addressId: string) => {
+    if (!user || !user.id) return;
     try {
-      await setPrimaryAddress(addressId);
+      await setPrimaryAddress(addressId, user.id); // Melemparkan data user.id secara dinamis
       refreshPageData(); 
     } catch {
       alert("Gagal mengubah alamat utama, coba lagi nanti.");
@@ -37,6 +40,7 @@ export default function AddressesPage() {
   };
 
   const handleDelete = async (addressId: string, isPrimary: boolean) => {
+    if (!user || !user.id) return;
     if (isPrimary) {
       alert("Alamat utama tidak boleh dihapus! Atur alamat lain sebagai utama terlebih dahulu.");
       return;
@@ -46,7 +50,7 @@ export default function AddressesPage() {
     if (!konfirmasi) return;
 
     try {
-      await deleteAddress(addressId);
+      await deleteAddress(addressId, user.id); // Melemparkan data user.id secara dinamis
       refreshPageData(); 
     } catch {
       alert("Gagal menghapus alamat, coba lagi nanti.");
@@ -58,21 +62,26 @@ export default function AddressesPage() {
     setIsModalOpen(true);
   };
 
-  // Fungsi fetch diisolasi penuh di dalam Effect agar linter tidak mendeteksi kebocoran render
   useEffect(() => {
     const fetchInitialData = async () => {
+      // 💡 Pastikan fungsi hanya jalan jika user.id valid dan ada
+      if (!user || !user.id) return; 
+
       try {
-        const data = await getUserAddresses();
-        setAddresses(data);
-      } catch {
-        // Catch bersih
+        const data = await getUserAddresses(user.id); // Melemparkan user.id ke service frontend
+        
+        // Filter alamat agar yang tampil hanya milik user aktif
+        const userOnlyAddresses = data.filter((addr: Address) => addr.userId === user.id);
+        setAddresses(userOnlyAddresses);
+      } catch (error) {
+        console.error("Gagal memuat alamat:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchInitialData();
-  }, []); 
+  }, [user]);
 
   return (
     <div className="w-full min-h-screen bg-gray-50 p-4 md:p-8">
@@ -121,7 +130,7 @@ export default function AddressesPage() {
                 <p className="text-sm font-medium text-gray-950 mb-0.5">{addr.receiver}</p>
                 <p className="text-xs md:text-sm text-gray-500 mb-2">{addr.phone}</p>
                 <p className="text-xs md:text-sm text-gray-600 leading-relaxed bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                  {addr.address}, Kec. {addr.district}, {addr.city}, {addr.province}
+                  {addr.address}
                 </p>
 
                 {/* Action Buttons */}

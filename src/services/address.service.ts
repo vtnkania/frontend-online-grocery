@@ -1,12 +1,16 @@
-const NEXT_PUBLIC_API_URL = 'http://localhost:3000/api/v1';
+const NEXT_PUBLIC_API_URL = 'http://localhost:8000/api/v1';
 
-// 1. Ambil Semua Alamat
-export const getUserAddresses = async () => {
+// 1. Ambil Semua Alamat (Ditambahkan parameter userId agar dinamis)
+export const getUserAddresses = async (userId: string) => {
   try {
-    const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses`, {
+    const token = localStorage.getItem('token'); 
+    
+    // 💡 Mengirim userId lewat query string agar dibaca oleh backend controller
+    const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses?userId=${userId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
     });
     
@@ -27,6 +31,9 @@ export const createAddress = async (data: {
   phoneNumber: string;
   addressDetails: string;
   isPrimary: boolean;
+  userId: string; // 👈 Wajib dikirim dari form modal frontend kamu
+  latitude: number;
+  longitude: number;
 }) => {
   try {
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses`, {
@@ -48,15 +55,17 @@ export const createAddress = async (data: {
   }
 };
 
-// 3. Atur Alamat Utama (Diubah ke PATCH agar sesuai standar parsial update Express)
-export const setPrimaryAddress = async (addressId: string) => {
+// 3. Atur Alamat Utama (Ditambahkan userId di body request)
+export const setPrimaryAddress = async (addressId: string, userId: string) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
       method: "PATCH", 
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ isPrimary: true }),
+      body: JSON.stringify({ isPrimary: true, userId }), // 💡 Kirim userId agar backend mengizinkan update
     });
 
     if (!response.ok) {
@@ -70,12 +79,46 @@ export const setPrimaryAddress = async (addressId: string) => {
   }
 };
 
-export const deleteAddress = async (addressId: string) => {
+// 4. Perbarui Detail Alamat (Ditambahkan userId di dalam tipe data & payload)
+export const updateAddressDetails = async (addressId: string, data: {
+  addressName: string;
+  receiverName: string;
+  phoneNumber: string;
+  addressDetails: string;
+  isPrimary: boolean;
+  userId: string; // 👈 Tambahkan ini agar controller backend tidak melempar eror 400
+}) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error("Gagal memperbarui alamat");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updateAddressDetails service:", error);
+    throw error;
+  }
+};
+
+// 5. Hapus Alamat (Ditambahkan query string ?userId= agar sesuai aturan delete controller)
+export const deleteAddress = async (addressId: string, userId: string) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}?userId=${userId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
     });
 
@@ -90,29 +133,16 @@ export const deleteAddress = async (addressId: string) => {
   }
 };
 
-export const updateAddressDetails = async (addressId: string, data: {
-  addressName: string;
-  receiverName: string;
-  phoneNumber: string;
-  addressDetails: string;
-  isPrimary: boolean;
-}) => {
-  try {
-    const response = await fetch(`${NEXT_PUBLIC_API_URL}/addresses/${addressId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
+// 6. Terjemahkan Koordinat via OpenCage API (Ramping & Terisolasi)
+export const getReverseGeocoding = async (lat: number, lng: number) => {
+  const apiKey = process.env.NEXT_PUBLIC_OPENCAGE_API_KEY;
+  if (!apiKey) throw new Error("API Key OpenCage tidak ditemukan di .env");
 
-    if (!response.ok) {
-      throw new Error("Gagal memperbarui alamat");
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Error updateAddressDetails service:", error);
-    throw error;
-  }
+  const res = await fetch(
+    `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&language=id`
+  );
+  if (!res.ok) throw new Error("Gagal menghubungi server OpenCage");
+  
+  const data = await res.json();
+  return data.results?.[0]?.components || null;
 };
