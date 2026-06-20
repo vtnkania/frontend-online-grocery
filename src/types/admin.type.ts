@@ -94,3 +94,56 @@ export type StoreManager = {
   name: string;
   email: string;
 };
+
+export type AdminRole = "SUPER_ADMIN" | "STORE_ADMIN" | "CUSTOMER";
+
+export type AdminUser = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: AdminRole;
+  isVerified: boolean;
+  emailVerifiedAt: string | null;
+  profileImageUrl: string | null;
+  createdAt: string;
+};
+
+export type AdminUserStats = {
+  totalUsers: number;
+  customers: number;
+  staffAccounts: number;
+  verifiedUsers: number;
+};
+
+export type DashboardMetricData = {
+  totalRevenue: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  activeCustomers: number;
+};
+
+export type DashboardTrendPoint = {
+  date: string;
+  revenue: number;
+  orders: number;
+};
+
+export type DashboardTopProduct = {
+  name: string;
+  imageUrl: string | null;
+  quantity: number;
+  revenue: number;
+};
+
+export type DashboardCategorySale = {
+  name: string;
+  revenue: number;
+  percentage: number;
+};
+
+export type AdminDashboardData = {
+  metrics: DashboardMetricData;
+  revenueTrend: DashboardTrendPoint[];
+  topProducts: DashboardTopProduct[];
+  salesByCategory: DashboardCategorySale[];
+};

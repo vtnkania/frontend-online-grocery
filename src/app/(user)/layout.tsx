@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/shared/Footer";
+import AccountShell from "@/components/account/AccountShell";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -24,8 +25,10 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <main>{children}</main>
+      <main>{isAccountPath(pathname) ? <AccountShell>{children}</AccountShell> : children}</main>
       <Footer />
     </div>
   );
 }
+
+const isAccountPath = (pathname: string) => ["/profile", "/addresses", "/orders"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
