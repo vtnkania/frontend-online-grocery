@@ -11,7 +11,7 @@ type AuthState = {
   setUser: (user: FreshMartUser | null) => void;
   setSession: (token: string, user: FreshMartUser) => void;
   initialize: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<FreshMartUser>;
   logout: () => void;
 };
 
@@ -39,6 +39,7 @@ export const useAuth = create<AuthState>((set) => ({
     const result = await loginUser(email, password);
     setStoredToken(result.accessToken);
     set({ user: result.user, loading: false });
+    return result.user;
   },
   logout: () => {
     clearStoredToken();

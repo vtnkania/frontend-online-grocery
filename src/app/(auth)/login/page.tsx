@@ -29,8 +29,9 @@ function LoginInner() {
     try {
       setLoading(true);
       setError("");
-      await login(parsed.data.email, parsed.data.password);
-      router.push(redirectTo);
+      const user = await login(parsed.data.email, parsed.data.password);
+      const admin = user.role === "SUPER_ADMIN" || user.role === "STORE_ADMIN";
+      router.push(admin ? "/admin/dashboard" : redirectTo);
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Login gagal."));
     } finally {

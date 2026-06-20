@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Leaf, LogOut, MapPin, ShoppingCart, UserCircle } from "lucide-react";
+import { LayoutDashboard, Leaf, LogOut, MapPin, ShoppingCart, UserCircle } from "lucide-react";
 import { getUserCart } from "@/services/cart.service";
 import { useAuth } from "@/hooks/useAuth";
 import SearchBar from "./SearchBar";
@@ -39,6 +39,7 @@ export default function Navbar() {
             <ShoppingCart className="size-5" />
             {displayCount > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{displayCount}</span>}
           </Link>
+          {user && user.role !== "CUSTOMER" && <Link className="rounded-full p-2 text-slate-700 hover:bg-emerald-50" href="/admin/dashboard" title="Dashboard"><LayoutDashboard className="size-5" /></Link>}
           {user ? <UserMenu name={user.name || user.email} onLogout={logout} /> : <Link className="font-semibold text-emerald-800" href="/login">Login</Link>}
         </div>
       </div>
