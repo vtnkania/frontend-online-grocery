@@ -2,23 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Grid2X2, LayoutDashboard, LogOut, Package, ReceiptText, Store, Users } from "lucide-react";
+import { ArrowLeftRight, Boxes, Grid2X2, LayoutDashboard, LogOut, Package, ReceiptText, Store, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
 const items = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Products", href: "/admin/products", icon: Package },
-  { label: "Categories", href: "/admin/categories", icon: Grid2X2 },
+  { label: "Categories", href: "/admin/categories", icon: Grid2X2, superOnly: true },
   { label: "Inventory", href: "/admin/inventory", icon: Boxes },
+  { label: "Stock Mutation", href: "/admin/stock-mutation", icon: ArrowLeftRight },
   { label: "Orders", href: "/admin/orders", icon: ReceiptText },
-  { label: "Stores", href: "/admin/stores", icon: Store },
-  { label: "Users", href: "/admin/users", icon: Users },
+  { label: "Stores", href: "/admin/stores", icon: Store, superOnly: true },
+  { label: "Users", href: "/admin/users", icon: Users, superOnly: true },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const logout = useAuth((state) => state.logout);
+  const role = useAuth((state) => state.user?.role);
+  const visibleItems = items.filter((item) => !item.superOnly || role === "SUPER_ADMIN");
   return (
     <aside className="border-r border-slate-200 bg-[#eaf1ff] px-5 py-6 md:sticky md:top-0 md:h-screen">
       <div className="mb-8">
@@ -26,7 +29,7 @@ export default function AdminSidebar() {
         <p className="text-sm tracking-wide text-slate-600">Admin Panel</p>
       </div>
       <nav className="flex gap-2 overflow-x-auto pb-2 md:block md:space-y-2 md:overflow-visible">
-        {items.map((item) => <NavItem active={isActive(pathname, item.href)} item={item} key={item.href} />)}
+        {visibleItems.map((item) => <NavItem active={isActive(pathname, item.href)} item={item} key={item.href} />)}
       </nav>
       <div className="mt-8 hidden border-t border-slate-300 pt-5 md:block">
         <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-slate-800 hover:bg-white">
