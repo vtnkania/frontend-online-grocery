@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronRight, Minus, Plus, ShoppingCart, Truck } from "lucide-react";
@@ -20,6 +20,7 @@ const fallbackImage = "https://images.unsplash.com/photo-1567306226416-28f0efdc8
 
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
+  const router = useRouter();
   const location = useCatalogLocation();
   const user = useAuth((state) => state.user);
   const [product, setProduct] = useState<ProductDetail | null>(null);
@@ -44,7 +45,11 @@ export default function ProductDetailPage() {
 
   const handleAdd = async () => {
     if (!product) return;
-    if (!user?.isVerified) {
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(currentPath())}`);
+      return;
+    }
+    if (!user.isVerified) {
       toast.error("Login dan verifikasi email terlebih dahulu untuk memakai keranjang.");
       return;
     }
@@ -104,6 +109,8 @@ export default function ProductDetailPage() {
     </main>
   );
 }
+
+const currentPath = () => (typeof window === "undefined" ? "/" : `${window.location.pathname}${window.location.search}`);
 
 function Breadcrumb({ product }: { product: ProductDetail | null }) {
   return (

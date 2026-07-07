@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { ArrowRight, MapPin, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
@@ -25,13 +25,11 @@ export default function Home() {
 }
 
 function HomeInner() {
-  const user = useAuth((state) => state.user);
   const notice = useSearchParams().get("notice");
   const location = useCatalogLocation();
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [store, setStore] = useState<StoreLocation | null>(null);
-  const blocked = !user?.isVerified;
 
   useEffect(() => {
     if (location.loading) return;
@@ -62,7 +60,7 @@ function HomeInner() {
           <div><h2 className="text-3xl font-black">Fresh Deals</h2><p className="text-sm text-slate-500">Available now from your selected store</p></div>
           <Link className="hidden items-center gap-1 text-sm font-bold text-emerald-800 md:flex" href="/products">See all <ArrowRight className="size-4" /></Link>
         </div>
-        <ProductGrid blocked={blocked} products={products} />
+        <ProductGrid products={products} />
       </section>
       <ReferFriend />
       <Footer />
@@ -109,14 +107,24 @@ function CategoryGrid({ categories }: { categories: CatalogCategory[] }) {
   );
 }
 
-function ProductGrid({ products, blocked }: { products: CatalogProduct[]; blocked: boolean }) {
+function ProductGrid({ products }: { products: CatalogProduct[] }) {
   if (!products.length) return <p className="text-sm text-slate-500">Fresh deals are not available for this store yet.</p>;
-  return <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{products.map((product) => <DealCard blocked={blocked} key={`${product.storeId}-${product.id}`} product={product} />)}</div>;
+  return <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{products.map((product) => <DealCard key={`${product.storeId}-${product.id}`} product={product} />)}</div>;
 }
 
-function DealCard({ product, blocked }: { product: CatalogProduct; blocked: boolean }) {
+function DealCard({ product }: { product: CatalogProduct }) {
+  const user = useAuth((state) => state.user);
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const handleAdd = async () => {
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(currentPath())}`);
+      return;
+    }
+    if (!user.isVerified) {
+      toast.error("Login dan verifikasi email terlebih dahulu untuk memakai keranjang.");
+      return;
+    }
     try {
       setLoading(true);
       await addToCart(product.id, product.storeId, 1);
@@ -137,9 +145,9 @@ function DealCard({ product, blocked }: { product: CatalogProduct; blocked: bool
       <p className="mt-1 text-xs text-slate-500">Stock: {product.stock}</p>
       <div className="mt-3 flex items-center justify-between">
         <p className="text-xl font-black">Rp {Number(product.price).toLocaleString("id-ID")}</p>
-        <button disabled={blocked || product.stock <= 0 || loading} onClick={handleAdd} className="flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:bg-slate-300"><Plus className="size-3" /> {loading ? "..." : "Add"}</button>
+        <button disabled={product.stock <= 0 || loading} onClick={handleAdd} className="flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:bg-slate-300"><Plus className="size-3" /> {loading ? "..." : "Add"}</button>
       </div>
-      {blocked && <p className="mt-2 flex items-center gap-1 text-[11px] text-amber-700"><ShoppingCart className="size-3" /> Login dan verifikasi untuk cart.</p>}
+      {user && !user.isVerified && <p className="mt-2 flex items-center gap-1 text-[11px] text-amber-700"><ShoppingCart className="size-3" /> Verifikasi email untuk cart.</p>}
     </article>
   );
 }
@@ -154,3 +162,5 @@ function ReferFriend() {
     </section>
   );
 }
+
+const currentPath = () => (typeof window === "undefined" ? "/" : `${window.location.pathname}${window.location.search}`);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react";
-import { Download, Edit, PlusCircle, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit, PlusCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import AdminFilterBar from "@/components/admin/AdminFilterBar";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
@@ -20,7 +20,7 @@ const emptyOptions: AdminOptions = { categories: [], stores: [] };
 export default function AdminProductsPage() {
   const user = useAuth((state) => state.user);
   const readonly = user?.role === "STORE_ADMIN";
-  const [filters, setFilters] = useState<ProductAdminParams>({ page: 1, limit: 10, stockStatus: "all", sortBy: "createdAt", sortOrder: "desc" });
+  const [filters, setFilters] = useState<ProductAdminParams>({ page: 1, limit: 10, sortBy: "createdAt", sortOrder: "desc" });
   const [options, setOptions] = useState(emptyOptions);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [meta, setMeta] = useState(emptyMeta);
@@ -32,7 +32,6 @@ export default function AdminProductsPage() {
 
   const actions = useMemo(() => (
     <>
-      <Button variant="outline"><Download /> Bulk Actions</Button>
       {!readonly && <Button asChild className="bg-emerald-700"><Link href="/admin/products/create"><PlusCircle /> Add New Product</Link></Button>}
     </>
   ), [readonly]);
@@ -41,7 +40,7 @@ export default function AdminProductsPage() {
     <>
       <AdminPageHeader title="Product Management" subtitle="Update, track, and manage your global inventory." actions={actions} />
       <section className="space-y-6 p-5">
-        <AdminFilterBar search={filters.search ?? ""} categoryId={filters.categoryId ?? ""} storeId={filters.storeId ?? ""} stockStatus={filters.stockStatus ?? "all"} options={options} onChange={(name, value) => setFilters((old) => ({ ...old, [name]: value, page: 1 }))} />
+        <AdminFilterBar search={filters.search ?? ""} categoryId={filters.categoryId ?? ""} storeId={filters.storeId ?? ""} options={options} showStockFilter={false} onChange={(name, value) => setFilters((old) => ({ ...old, [name]: value, page: 1 }))} />
         <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200">
           <ProductTable products={products} readonly={readonly} loading={loading} onDelete={setTarget} />
           <AdminPagination meta={meta} onPageChange={(page) => setFilters((old) => ({ ...old, page }))} />
@@ -66,11 +65,27 @@ function ProductTable({ products, readonly, loading, onDelete }: { products: Adm
 }
 
 function ProductRow({ product, readonly, onDelete }: { product: AdminProduct; readonly: boolean; onDelete: (product: AdminProduct) => void }) {
+  const [expanded, setExpanded] = useState(false);
   const image = product.images[0]?.url ?? "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=120&q=80";
+  const visibleStores = expanded ? product.stores : product.stores.slice(0, 2);
+  const hasMoreStores = product.stores.length > 2;
+
   return (
     <tr className="border-t border-slate-100">
       <td className="px-5 py-5"><div className="flex items-center gap-4"><img src={image} alt={product.name} className="size-14 rounded-lg object-cover" /><div><p className="font-black">{product.name}</p><p className="text-sm text-slate-500">{product.category.name}</p></div></div></td>
-      <td className="max-w-48 text-slate-700">{product.stores.map((store) => store.storeName).join(", ") || "No store"}</td>
+      <td className="max-w-56 text-slate-700">
+        {product.stores.length ? (
+          <div className="space-y-2">
+            <p>{visibleStores.map((store) => store.storeName).join(", ")}</p>
+            {hasMoreStores && (
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-0 font-bold text-emerald-800 hover:bg-transparent" onClick={() => setExpanded((value) => !value)}>
+                {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                {expanded ? "Hide" : `Show more (${product.stores.length - 2})`}
+              </Button>
+            )}
+          </div>
+        ) : "No store"}
+      </td>
       <td className="font-black">Rp {Number(product.price).toLocaleString("id-ID")}</td>
       <td><StockBadge stock={product.totalStock} /></td>
       <td><span className={cn("rounded-full px-3 py-1 text-xs font-bold", product.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500")}>{product.isActive ? "Active" : "Inactive"}</span></td>

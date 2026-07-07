@@ -1,5 +1,5 @@
 import { api } from "@/lib/axios";
-import type { AdminInventory, AdminMeta, StockMutation } from "@/types/admin.type";
+import type { AdminInventory, AdminInventoryStats, AdminMeta, StockMutation } from "@/types/admin.type";
 
 export type InventoryAdminParams = {
   page?: number;
@@ -15,6 +15,7 @@ export type InventoryAdminParams = {
 type InventoryListResponse = {
   data: AdminInventory[];
   meta: AdminMeta;
+  stats: AdminInventoryStats;
 };
 
 const cleanParams = (params: Record<string, unknown>) =>
