@@ -35,6 +35,11 @@ export type AdminInventory = {
   updatedAt: string;
 };
 
+export type AdminInventoryStats = {
+  lowStock: number;
+  outOfStock: number;
+};
+
 export type StockMutation = {
   id: string;
   type: "IN" | "OUT" | "TRANSFER";

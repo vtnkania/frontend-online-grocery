@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BarChart3, Download, PackageCheck, ReceiptText, Users } from "lucide-react";
+import { BarChart3, PackageCheck, ReceiptText, Users } from "lucide-react";
 import { toast } from "sonner";
 import AdminMetricCard from "@/components/admin/AdminMetricCard";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import { Button } from "@/components/ui/button";
 import { getAdminDashboard } from "@/services/admin/dashboard-admin.service";
 import type { AdminDashboardData, DashboardCategorySale, DashboardTopProduct, DashboardTrendPoint } from "@/types/admin.type";
 
@@ -27,7 +26,7 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <AdminPageHeader title="Analytics Overview" subtitle="Real-time performance tracking for FreshMart ecosystem." actions={<Button className="bg-emerald-700"><Download /> Export</Button>} />
+      <AdminPageHeader title="Analytics Overview" subtitle="Real-time performance tracking for FreshMart ecosystem." />
       <section className="space-y-6 p-5">
         <MetricGrid data={dashboard} />
         {loading && <p className="rounded-lg bg-white p-4 text-sm text-slate-500 ring-1 ring-slate-200">Loading dashboard data...</p>}
