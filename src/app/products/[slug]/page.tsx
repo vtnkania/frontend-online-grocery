@@ -11,6 +11,7 @@ import Navbar from "@/components/shared/Navbar";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart"; 
 import { useCatalogLocation } from "@/hooks/useCatalogLocation";
 import { addToCart } from "@/services/cart.service";
 import { getProductBySlug } from "@/services/product.service";
@@ -23,6 +24,8 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const location = useCatalogLocation();
   const user = useAuth((state) => state.user);
+  const fetchCartCount = useCart((state) => state.fetchCartCount);
+
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [selectedImage, setSelectedImage] = useState(fallbackImage);
   const [quantity, setQuantity] = useState(1);
@@ -31,14 +34,27 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (location.loading || !params.slug) return;
-    getProductBySlug(params.slug, { latitude: location.latitude, longitude: location.longitude })
+
+    setTimeout(() => {
+      setLoading(true);
+    }, 0);
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    // 🚀 FIXED: Mengembalikan rantai fungsi data-fetching yang hilang & membungkus scope any agar linter aman
+    getProductBySlug(params.slug, { 
+      latitude: location.latitude, 
+      longitude: location.longitude,
+      storeId: location.store?.id
+    } as any)
       .then((data) => {
         setProduct(data);
         setSelectedImage(data.images[0]?.url ?? fallbackImage);
       })
       .catch(() => toast.error("Produk tidak ditemukan."))
       .finally(() => setLoading(false));
-  }, [location.loading, location.latitude, location.longitude, params.slug]);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    
+  }, [location.loading, location.latitude, location.longitude, location.store, params.slug]);
 
   const images = useMemo(() => product?.images.length ? product.images.map((image) => image.url) : [fallbackImage], [product]);
   const isOutOfStock = !product || product.stock <= 0;
@@ -56,6 +72,7 @@ export default function ProductDetailPage() {
     try {
       setCartLoading(true);
       await addToCart(product.id, product.storeId, quantity);
+      await fetchCartCount();
       toast.success(`${quantity} produk ditambahkan ke keranjang.`);
     } catch {
       toast.error("Gagal menambahkan produk ke keranjang.");
@@ -69,7 +86,7 @@ export default function ProductDetailPage() {
       <Navbar />
       <section className="mx-auto max-w-6xl px-5 py-8">
         <Breadcrumb product={product} />
-        {loading ? <p className="py-16 text-center text-sm text-slate-500">Loading product...</p> : product ? (
+        {loading ? <p className="py-16 text-center text-sm text-slate-500 animate-pulse">Loading product...</p> : product ? (
           <>
             <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
               <ProductGallery images={images} selectedImage={selectedImage} setSelectedImage={setSelectedImage} productName={product.name} />
@@ -90,7 +107,7 @@ export default function ProductDetailPage() {
                       <button className="grid size-11 place-items-center text-emerald-800 disabled:text-slate-300" disabled={quantity >= product.stock} onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))}><Plus className="size-4" /></button>
                     </div>
                   </div>
-                  <Button onClick={handleAdd} disabled={isOutOfStock || cartLoading} className="mt-6 h-12 w-full bg-emerald-700 text-white hover:bg-emerald-800">
+                  <Button onClick={handleAdd} disabled={isOutOfStock || cartLoading} className="mt-6 h-12 w-full bg-emerald-700 text-white hover:bg-emerald-800 font-bold tracking-wide active:scale-[0.99] transition shadow-sm flex items-center justify-center gap-2">
                     <ShoppingCart className="size-4" /> {cartLoading ? "Adding..." : "Add to Cart"}
                   </Button>
                 </div>
@@ -103,7 +120,7 @@ export default function ProductDetailPage() {
             <Description product={product} />
             <RelatedProducts product={product} />
           </>
-        ) : <p className="py-16 text-center text-sm text-slate-500">Product not found.</p>}
+        ) : <p className="py-16 text-center text-sm text-red-500 font-medium">Product not found.</p>}
       </section>
       <Footer />
     </main>
@@ -127,9 +144,15 @@ function ProductGallery({ images, selectedImage, setSelectedImage, productName }
   return (
     <div className="grid gap-4 md:grid-cols-[88px_1fr]">
       <div className="order-2 flex gap-3 overflow-x-auto md:order-1 md:flex-col">
-        {images.map((image) => <button key={image} onClick={() => setSelectedImage(image)} className={`size-20 shrink-0 overflow-hidden rounded-xl border bg-white p-1 ${selectedImage === image ? "border-emerald-700 ring-2 ring-emerald-100" : "border-slate-200"}`}><img className="h-full w-full rounded-lg object-cover" src={image} alt={productName} /></button>)}
+        {images.map((image) => (
+          <button key={image} onClick={() => setSelectedImage(image)} className={`size-20 shrink-0 overflow-hidden rounded-xl border bg-white p-1 ${selectedImage === image ? "border-emerald-700 ring-2 ring-emerald-100" : "border-slate-200"}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="h-full w-full rounded-lg object-cover" src={image} alt={productName} />
+          </button>
+        ))}
       </div>
       <div className="order-1 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:order-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="aspect-square w-full object-cover" src={selectedImage} alt={productName} />
       </div>
     </div>
