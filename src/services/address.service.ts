@@ -133,16 +133,97 @@ export const deleteAddress = async (addressId: string, userId: string) => {
   }
 };
 
+export type ReverseGeocodingComponents = {
+  road?: string;
+  neighbourhood?: string;
+  village?: string;
+  suburb?: string;
+  postcode?: string;
+  state?: string;
+  region?: string;
+  city?: string;
+  county?: string;
+  subdistrict?: string;
+  city_district?: string;
+  municipality?: string;
+  [key: string]: string | undefined;
+};
+
+export type ReverseGeocodingResult = {
+  formatted: string;
+  components: ReverseGeocodingComponents;
+};
+
+export type ForwardGeocodingResult = {
+  formatted: string;
+  latitude: number;
+  longitude: number;
+};
+
+export const forwardGeocodeLocations = async (
+  query: string,
+  signal?: AbortSignal,
+): Promise<ForwardGeocodingResult[]> => {
+  const apiKey = process.env.NEXT_PUBLIC_OPENCAGE_API_KEY;
+  if (!apiKey) throw new Error("API Key OpenCage tidak ditemukan di .env");
+
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length < 2) return [];
+
+  const params = new URLSearchParams({
+    q: normalizedQuery,
+    key: apiKey,
+    language: "id",
+    countrycode: "id",
+    limit: "5",
+    no_annotations: "1",
+  });
+  const res = await fetch(`https://api.opencagedata.com/geocode/v1/json?${params.toString()}`, { signal });
+  if (!res.ok) throw new Error("Gagal mencari lokasi melalui OpenCage");
+
+  const data = await res.json();
+  if (!Array.isArray(data.results)) return [];
+
+  return data.results.flatMap((result: {
+    formatted?: unknown;
+    geometry?: { lat?: unknown; lng?: unknown };
+  }) => {
+    const latitude = Number(result.geometry?.lat);
+    const longitude = Number(result.geometry?.lng);
+    const formatted = String(result.formatted || "").trim();
+
+    if (!formatted || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
+    return [{ formatted, latitude, longitude }];
+  });
+};
+
 // 6. Terjemahkan Koordinat via OpenCage API (Ramping & Terisolasi)
-export const getReverseGeocoding = async (lat: number, lng: number) => {
+export const reverseGeocodeLocation = async (
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<ReverseGeocodingResult | null> => {
   const apiKey = process.env.NEXT_PUBLIC_OPENCAGE_API_KEY;
   if (!apiKey) throw new Error("API Key OpenCage tidak ditemukan di .env");
 
   const res = await fetch(
-    `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&language=id`
+    `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&language=id`,
+    { signal },
   );
   if (!res.ok) throw new Error("Gagal menghubungi server OpenCage");
-  
+
   const data = await res.json();
-  return data.results?.[0]?.components || null;
+  const result = data.results?.[0];
+  if (!result) return null;
+
+  return {
+    formatted: String(result.formatted || ""),
+    components: result.components || {},
+  };
+};
+
+// Dipertahankan agar AddressModal dan pemanggil lama tetap kompatibel.
+export const getReverseGeocoding = async (lat: number, lng: number) => {
+  const result = await reverseGeocodeLocation(lat, lng);
+  return result?.components || null;
 };

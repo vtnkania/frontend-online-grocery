@@ -97,7 +97,7 @@ function ProductsInner() {
 function readProductQuery(params: URLSearchParams) {
   return {
     page: Number(params.get("page") || 1),
-    limit: 8,
+    limit: 12,
     search: params.get("search") ?? "",
     categoryId: params.get("categoryId") ?? undefined,
     sortBy: ((params.get("sortBy") as ProductSortBy | null) ?? "createdAt"),

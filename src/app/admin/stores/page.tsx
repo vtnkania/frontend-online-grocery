@@ -1,13 +1,15 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Edit, MapPin, PlusCircle, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import AdminPagination from "@/components/admin/AdminPagination";
 import ConfirmActionDialog from "@/components/admin/ConfirmActionDialog";
+import StoreLocationPicker from "@/components/admin/StoreLocationPicker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { reverseGeocodeLocation } from "@/services/address.service";
 import { createAdminStore, deleteAdminStore, getAdminStores, getStoreManagers, updateAdminStore, type StoreAdminParams, type StoreBody } from "@/services/admin/store-admin.service";
 import type { AdminMeta, AdminStore, StoreManager, StoreType } from "@/types/admin.type";
 
@@ -65,21 +67,99 @@ function StoreTable({ items, onEdit, onDelete }: { items: AdminStore[]; onEdit: 
 function StoreDialog({ target, managers, onClose, onSaved }: { target: AdminStore | "new" | null; managers: StoreManager[]; onClose: () => void; onSaved: () => void }) {
   const editing = target && target !== "new" ? target : null;
   const [form, setForm] = useState(editing ? storeToForm(editing) : initialForm);
-  const submit = (event: FormEvent) => {
+  const [geocoding, setGeocoding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const geocodeControllerRef = useRef<AbortController | null>(null);
+  const mapCoordinates = parseCoordinates(form.latitude, form.longitude);
+
+  useEffect(() => () => geocodeControllerRef.current?.abort(), []);
+
+  const selectLocation = async (latitude: number, longitude: number, formattedAddress?: string) => {
+    const nextLatitude = latitude.toFixed(6);
+    const nextLongitude = longitude.toFixed(6);
+
+    geocodeControllerRef.current?.abort();
+    geocodeControllerRef.current = null;
+
+    if (formattedAddress?.trim()) {
+      setGeocoding(false);
+      setForm((old) => ({
+        ...old,
+        latitude: nextLatitude,
+        longitude: nextLongitude,
+        address: formattedAddress.trim(),
+      }));
+      return;
+    }
+
+    setForm((old) => ({ ...old, latitude: nextLatitude, longitude: nextLongitude }));
+    const controller = new AbortController();
+    geocodeControllerRef.current = controller;
+    setGeocoding(true);
+
+    try {
+      const result = await reverseGeocodeLocation(latitude, longitude, controller.signal);
+      if (geocodeControllerRef.current !== controller) return;
+      if (!result?.formatted.trim()) {
+        toast.error("Address was not found for the selected location. Please enter it manually.");
+        return;
+      }
+      setForm((old) => ({ ...old, address: result.formatted.trim() }));
+    } catch (error) {
+      if (!isAbortError(error) && geocodeControllerRef.current === controller) {
+        toast.error(error instanceof Error ? error.message : "Failed to find the selected address.");
+      }
+    } finally {
+      if (geocodeControllerRef.current === controller) {
+        geocodeControllerRef.current = null;
+        setGeocoding(false);
+      }
+    }
+  };
+
+  const closeDialog = () => {
+    geocodeControllerRef.current?.abort();
+    geocodeControllerRef.current = null;
+    setGeocoding(false);
+    onClose();
+  };
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (geocoding || submitting) return;
     const body = validateStoreForm(form);
     if (typeof body === "string") return toast.error(body);
-    const action = editing ? updateAdminStore(editing.id, body) : createAdminStore(body);
-    action.then(() => { toast.success("Store saved."); onSaved(); onClose(); }).catch(() => toast.error("Failed to save store."));
+
+    setSubmitting(true);
+    try {
+      if (editing) await updateAdminStore(editing.id, body);
+      else await createAdminStore(body);
+      toast.success("Store saved.");
+      onSaved();
+      onClose();
+    } catch {
+      toast.error("Failed to save store.");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
   return (
-    <Dialog open={Boolean(target)} onOpenChange={onClose}><DialogContent><DialogHeader><DialogTitle>{editing ? "Edit Store" : "Add Store"}</DialogTitle></DialogHeader>
+    <Dialog open={Boolean(target)} onOpenChange={(open) => !open && !submitting && closeDialog()}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{editing ? "Edit Store" : "Add Store"}</DialogTitle></DialogHeader>
       <form className="grid gap-3" onSubmit={submit}>
         <input className="input-admin" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Store name" />
+        <div className="space-y-2">
+          <div>
+            <p className="font-semibold text-slate-800">Store location</p>
+            <p className="text-xs text-slate-500">Click the map or drag the marker to automatically fill the address and coordinates.</p>
+          </div>
+          <StoreLocationPicker latitude={mapCoordinates?.latitude} longitude={mapCoordinates?.longitude} onSelect={selectLocation} />
+          <p className="min-h-5 text-xs text-slate-500" aria-live="polite">{geocoding ? "Finding address for the selected location..." : "You can still edit the generated fields manually."}</p>
+        </div>
         <textarea className="input-admin min-h-24" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Address" />
         <div className="grid gap-3 md:grid-cols-2"><input className="input-admin" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} placeholder="Latitude" /><input className="input-admin" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder="Longitude" /></div>
         <div className="grid gap-3 md:grid-cols-2"><select className="input-admin" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as StoreType })}><option value="CABANG">Cabang</option><option value="UTAMA">Utama</option></select><select className="input-admin" value={form.managerUserId} onChange={(e) => setForm({ ...form, managerUserId: e.target.value })}><option value="">No manager</option>{managers.map((manager) => <option value={manager.id} key={manager.id}>{manager.name}</option>)}</select></div>
-        <DialogFooter><Button variant="outline" type="button" onClick={onClose}>Cancel</Button><Button className="bg-emerald-700">Save Store</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" type="button" disabled={submitting} onClick={closeDialog}>Cancel</Button><Button className="bg-emerald-700" disabled={geocoding || submitting}>{submitting ? "Saving..." : geocoding ? "Finding address..." : "Save Store"}</Button></DialogFooter>
       </form>
     </DialogContent></Dialog>
   );
@@ -88,6 +168,8 @@ function StoreDialog({ target, managers, onClose, onSaved }: { target: AdminStor
 function validateStoreForm(form: typeof initialForm): StoreBody | string {
   if (form.name.trim().length < 2) return "Store name must be at least 2 characters.";
   if (form.address.trim().length < 5) return "Address must be at least 5 characters.";
+  if (!form.latitude.trim()) return "Latitude is required.";
+  if (!form.longitude.trim()) return "Longitude is required.";
   const latitude = Number(form.latitude);
   const longitude = Number(form.longitude);
   if (Number.isNaN(latitude) || latitude < -90 || latitude > 90) return "Latitude is invalid.";
@@ -96,6 +178,19 @@ function validateStoreForm(form: typeof initialForm): StoreBody | string {
 }
 
 const storeToForm = (store: AdminStore) => ({ name: store.name, address: store.address, latitude: String(store.latitude), longitude: String(store.longitude), type: store.type, managerUserId: store.manager?.id ?? "" });
+
+function parseCoordinates(latitude: string, longitude: string) {
+  if (!latitude.trim() || !longitude.trim()) return null;
+  const parsedLatitude = Number(latitude);
+  const parsedLongitude = Number(longitude);
+  if (!Number.isFinite(parsedLatitude) || !Number.isFinite(parsedLongitude)) return null;
+  if (parsedLatitude < -90 || parsedLatitude > 90 || parsedLongitude < -180 || parsedLongitude > 180) return null;
+  return { latitude: parsedLatitude, longitude: parsedLongitude };
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
 
 function loadStores(filters: StoreAdminParams, setItems: (items: AdminStore[]) => void, setMeta: (meta: AdminMeta) => void) {
   getAdminStores(filters).then((result) => { setItems(result.data); setMeta(result.meta); }).catch(() => toast.error("Failed to load stores."));

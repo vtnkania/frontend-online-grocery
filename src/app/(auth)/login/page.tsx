@@ -52,8 +52,8 @@ function LoginInner() {
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           <label className="mt-5 flex items-center gap-3 text-sm text-slate-700"><input type="checkbox" className="size-4" /> Remember me for 30 days</label>
           <button disabled={loading} className="mt-5 h-14 w-full rounded-xl bg-emerald-700 font-bold text-white hover:bg-emerald-800">{loading ? "Signing in..." : "Login"}</button>
-          <div className="my-8 flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400"><span className="h-px flex-1 bg-slate-200" /> Or continue with <span className="h-px flex-1 bg-slate-200" /></div>
-          <Social redirectTo={redirectTo} />
+          {/* <div className="my-8 flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400"><span className="h-px flex-1 bg-slate-200" /> Or continue with <span className="h-px flex-1 bg-slate-200" /></div> */}
+          {/* <Social redirectTo={redirectTo} /> */}
           <p className="mt-10 text-center">Don&apos;t have an account? <Link className="font-bold text-emerald-800" href="/register">Sign up for free</Link></p>
         </form>
       </section>
