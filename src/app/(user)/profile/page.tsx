@@ -12,7 +12,7 @@ import type { FreshMartUser } from "@/types/user.type";
 const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
 
 export default function ProfilePage() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState("");
   const [passwords, setPasswords] = useState({ currentPassword: "", newPassword: "" });
@@ -49,9 +49,8 @@ export default function ProfilePage() {
     const parsed = changePasswordSchema.safeParse(passwords);
     if (!parsed.success) return toast.error(parsed.error.issues[0]?.message || "Password tidak valid.");
     await run(async () => {
-      const result = await changePassword(parsed.data.currentPassword, parsed.data.newPassword);
+      await changePassword(parsed.data.currentPassword, parsed.data.newPassword).then((res) => toast.success(res.message)).then(() => logout());
       setPasswords({ currentPassword: "", newPassword: "" });
-      toast.success(result.message);
     }, "");
   };
 
