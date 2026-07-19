@@ -5,6 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { ArrowLeft, Leaf, MailCheck, Send } from "lucide-react";
 import { resendVerification, verifyEmail, verifyEmailChange } from "@/services/auth.service";
+import { toast } from "sonner";
+import { useRouter } from 'next/navigation';
+import { useAuth } from "@/hooks/useAuth";
 
 export default function VerifyEmailPage() {
   return <Suspense><VerifyEmailInner /></Suspense>;
@@ -32,21 +35,29 @@ function CheckEmail({ email }: { email: string }) {
 
 function SetPassword({ token }: { token: string }) {
   const [password, setPassword] = useState("");
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (password.length < 8) return setMessage("Password minimal 8 karakter.");
-    const result = await verifyEmail(token, password);
-    setMessage(result.message);
+    await verifyEmail(token, password).then((res) => {
+      toast.success(res.message);
+      router.push("/login");
+    });
   };
   return <Shell title="Verify and set password" text="Create your password to activate your FreshMart account."><form onSubmit={submit} className="space-y-4"><input className="h-12 w-full rounded-xl border px-4" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" /><button className="h-12 w-full rounded-xl bg-emerald-700 font-bold text-white">Activate Account</button></form>{message && <p className="mt-4 text-sm text-emerald-700">{message}</p>}<BackLogin /></Shell>;
 }
 
 function EmailChange({ token }: { token: string }) {
   const [message, setMessage] = useState("");
+  const router = useRouter();
+  const { logout } = useAuth();
   const confirm = async () => {
-    const result = await verifyEmailChange(token);
-    setMessage(result.message);
+    await verifyEmailChange(token).then((res) => {
+      toast.success(res.message);
+      logout();
+      router.push("/login");
+    });
   };
   return <Shell title="Confirm new email" text="Finish your email change request for FreshMart."><button onClick={confirm} className="h-12 w-full rounded-xl bg-emerald-700 font-bold text-white">Confirm Email Change</button>{message && <p className="mt-4 text-sm text-emerald-700">{message}</p>}<BackLogin /></Shell>;
 }
