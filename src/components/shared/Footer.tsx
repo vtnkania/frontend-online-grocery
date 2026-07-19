@@ -21,7 +21,7 @@ export default function Footer() {
         </div>
       </div>
       <p className="mx-auto mt-8 max-w-6xl border-t border-slate-200 pt-5 text-center text-xs text-slate-500">
-        © 2024 FreshMart. All rights reserved.
+        © 2026 FreshMart. All rights reserved.
       </p>
     </footer>
   );

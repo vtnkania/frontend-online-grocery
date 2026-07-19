@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import AddressModal from './components/AddressModal';
+import dynamic from 'next/dynamic'; // 🚀 Impor fitur dynamic rendering
 import { getUserAddresses, setPrimaryAddress, deleteAddress } from '@/services/address.service';
-import { useAuth } from '@/hooks/useAuth'; // Import hook untuk mengambil data user login
+import { useAuth } from '@/hooks/useAuth';
+
+// 🚀 FIXED: Ubah impor AddressModal biasa menjadi dynamic dengan mematikan SSR
+const AddressModal = dynamic(() => import('./components/AddressModal'), { ssr: false });
 
 interface Address {
   id: string;
@@ -15,11 +18,11 @@ interface Address {
   city: string;
   district: string;
   isPrimary: boolean;
-  userId: string; // Properti userId pada interface data
+  userId: string;
 }
 
 export default function AddressesPage() {
-  const { user } = useAuth(); // Ambil state user aktif dari Zustand
+  const { user } = useAuth();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,7 +35,7 @@ export default function AddressesPage() {
   const handleSetPrimary = async (addressId: string) => {
     if (!user || !user.id) return;
     try {
-      await setPrimaryAddress(addressId, user.id); // Melemparkan data user.id secara dinamis
+      await setPrimaryAddress(addressId, user.id);
       refreshPageData(); 
     } catch {
       alert("Gagal mengubah alamat utama, coba lagi nanti.");
@@ -50,7 +53,7 @@ export default function AddressesPage() {
     if (!konfirmasi) return;
 
     try {
-      await deleteAddress(addressId, user.id); // Melemparkan data user.id secara dinamis
+      await deleteAddress(addressId, user.id);
       refreshPageData(); 
     } catch {
       alert("Gagal menghapus alamat, coba lagi nanti.");
@@ -64,13 +67,10 @@ export default function AddressesPage() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      // 💡 Pastikan fungsi hanya jalan jika user.id valid dan ada
       if (!user || !user.id) return; 
 
       try {
-        const data = await getUserAddresses(user.id); // Melemparkan user.id ke service frontend
-        
-        // Filter alamat agar yang tampil hanya milik user aktif
+        const data = await getUserAddresses(user.id);
         const userOnlyAddresses = data.filter((addr: Address) => addr.userId === user.id);
         setAddresses(userOnlyAddresses);
       } catch (error) {
@@ -86,7 +86,6 @@ export default function AddressesPage() {
   return (
     <div className="w-full min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="mx-auto max-w-3xl">
-        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">Daftar Alamat</h1>
@@ -100,7 +99,6 @@ export default function AddressesPage() {
           </button>
         </div>
 
-        {/* State Loading / Empty / Content */}
         {loading ? (
           <div className="text-center py-8 text-sm text-gray-500 animate-pulse">
             Memuat data alamat dari server...
@@ -133,7 +131,6 @@ export default function AddressesPage() {
                   {addr.address}
                 </p>
 
-                {/* Action Buttons */}
                 <div className="flex justify-end gap-4 mt-4 border-t pt-3 border-gray-100 text-xs md:text-sm font-medium">
                   {!addr.isPrimary && (
                     <button 

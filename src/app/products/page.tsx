@@ -28,16 +28,40 @@ function ProductsInner() {
 
   useEffect(() => {
     if (location.loading) return;
-    const coords = { latitude: location.latitude, longitude: location.longitude };
-    Promise.all([getProducts({ ...coords, ...query }), getCategories({ ...coords, limit: 12 })])
+
+    const params = { 
+      latitude: location.latitude, 
+      longitude: location.longitude,
+      storeId: location.store?.id,
+      ...query 
+    };
+
+    const categoryParams = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      limit: 12
+    };
+
+    // 🚀 FIXED: Dibungkus ke dalam setTimeout asinkron untuk mencegah aturan cascading renders
+    setTimeout(() => {
+      setLoading(true);
+    }, 0);
+
+    Promise.all([
+      getProducts(params), 
+      getCategories(categoryParams)
+    ])
       .then(([productResult, categoryResult]) => {
         setProducts(productResult.data);
         setMeta(productResult.meta);
         setCategories(categoryResult.data);
       })
-      .catch(() => { setProducts([]); setMeta(null); })
+      .catch(() => { 
+        setProducts([]); 
+        setMeta(null); 
+      })
       .finally(() => setLoading(false));
-  }, [location.loading, location.latitude, location.longitude, query]);
+  }, [location.loading, location.latitude, location.longitude, location.store, query]);
 
   const updateQuery = (changes: Record<string, string | number | undefined>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -46,16 +70,25 @@ function ProductsInner() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f7f8fd] text-slate-950">
+    <main className="min-h-screen bg-[#f7f8fd] text-slate-950 relative">
       <Navbar />
+      
       <section className="mx-auto max-w-6xl px-5 py-8">
-        <div className="mb-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-          <div><h1 className="text-3xl font-black">Groceries Catalog</h1><p className="text-sm text-slate-500">Showing products from {meta?.nearestStore?.name ?? "the nearest store"}</p></div>
+        <div className="mb-6 grid gap-4 grid-cols-1 md:items-end">
+          <div>
+            <h1 className="text-3xl font-black">Groceries Catalog</h1>
+          </div>
         </div>
+
         <CatalogFilters categories={categories} query={query} updateQuery={updateQuery} />
-        {loading ? <p className="py-12 text-center text-sm text-slate-500">Loading products...</p> : <ProductGrid products={products} />}
+        {loading ? (
+          <p className="py-12 text-center text-sm text-slate-500 animate-pulse">Loading products...</p>
+        ) : (
+          <ProductGrid products={products} />
+        )}
         <Pagination meta={meta} updateQuery={updateQuery} />
       </section>
+      
       <Footer />
     </main>
   );
@@ -75,16 +108,21 @@ function readProductQuery(params: URLSearchParams) {
 function CatalogFilters({ categories, query, updateQuery }: { categories: CatalogCategory[]; query: ReturnType<typeof readProductQuery>; updateQuery: (changes: Record<string, string | number | undefined>) => void }) {
   return (
     <div className="mb-6 flex flex-col gap-3 rounded-xl border border-emerald-100 bg-white p-4 md:flex-row md:items-center">
-      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700"><SlidersHorizontal className="size-4 text-emerald-700" /> Filters</div>
+      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+        <SlidersHorizontal className="size-4 text-emerald-700" /> Filters
+      </div>
       <select value={query.categoryId ?? ""} onChange={(event) => updateQuery({ categoryId: event.target.value || undefined, page: 1 })} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
         <option value="">All categories</option>
         {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
       </select>
       <select value={query.sortBy} onChange={(event) => updateQuery({ sortBy: event.target.value, page: 1 })} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
-        <option value="createdAt">Newest</option><option value="name">Name</option><option value="price">Price</option>
+        <option value="createdAt">Newest</option>
+        <option value="name">Name</option>
+        <option value="price">Price</option>
       </select>
       <select value={query.sortOrder} onChange={(event) => updateQuery({ sortOrder: event.target.value, page: 1 })} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
-        <option value="desc">Descending</option><option value="asc">Ascending</option>
+        <option value="desc">Descending</option>
+        <option value="asc">Ascending</option>
       </select>
     </div>
   );

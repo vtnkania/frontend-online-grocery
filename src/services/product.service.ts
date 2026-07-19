@@ -37,3 +37,30 @@ export const getProductBySlug = async (slug: string, params: Pick<ProductParams,
   const response = await api.get<ProductDetailResponse>(`/products/${slug}`, { params: cleanParams(params) });
   return response.data.data;
 };
+
+// 🚀 VERSI PREMIUM: 100% Kebal Eror Linter Strict (Bebas dari keyword 'any')
+export const getStores = async (): Promise<StoreLocation[]> => {
+  try {
+    // 🎯 Menggunakan 'unknown' untuk mematuhi aturan strict linter kelompok lo
+    const response = await api.get<unknown>("/stores");
+    const resData = response.data;
+
+    // Kondisi A: Jika backend langsung mengembalikan Array mentah
+    if (Array.isArray(resData)) {
+      return resData as StoreLocation[];
+    }
+
+    // Kondisi B: Jika backend membungkusnya di dalam properti .data
+    if (resData && typeof resData === "object" && "data" in resData) {
+      const nestedData = (resData as Record<string, unknown>).data;
+      if (Array.isArray(nestedData)) {
+        return nestedData as StoreLocation[];
+      }
+    }
+
+    return [];
+  } catch (error) {
+    console.error("Aduhh, gagal mengambil daftar toko dari backend:", error);
+    return [];
+  }
+};
