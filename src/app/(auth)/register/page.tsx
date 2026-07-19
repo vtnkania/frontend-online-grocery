@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { ArrowRight, BadgeCheck, Gauge, GitBranch, Leaf, Mail, Ticket } from "lucide-react";
+import { ArrowRight, BadgeCheck, Gauge, GitBranch, Leaf, Mail } from "lucide-react";
 import { registerUser } from "@/services/auth.service";
 import { emailOnlySchema } from "@/validations/auth.schema";
 import { getErrorMessage } from "@/lib/error-message";
@@ -51,8 +51,8 @@ export default function RegisterPage() {
         </div>
         <form onSubmit={submit} className="relative rounded-3xl bg-white p-8 shadow-2xl shadow-slate-200">
           <div className="absolute -top-8 left-10 right-10 flex items-center justify-between rounded-2xl bg-emerald-950 px-6 py-4 text-white shadow-xl">
-            <div><p className="text-xs font-bold uppercase tracking-widest text-emerald-100">New member reward</p><p className="font-bold">Free $20 Welcome Voucher</p></div>
-            <Ticket className="size-8" />
+            <div><p className="text-xs font-bold uppercase tracking-widest text-emerald-100">Create Your Account</p><p className="font-bold">Fresh groceries are just a few clicks away.</p></div>
+            {/* <Ticket className="size-8" /> */}
           </div>
           <div className="mt-10">
             <h2 className="text-4xl font-black">Create Account</h2>
@@ -67,8 +67,8 @@ export default function RegisterPage() {
           <button className="mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 font-bold text-white shadow-lg shadow-emerald-100 hover:bg-emerald-800" disabled={loading}>
             {loading ? "Sending..." : "Sign Up & Verify"} <ArrowRight className="size-5" />
           </button>
-          <div className="my-8 flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400"><span className="h-px flex-1 bg-slate-200" /> Or continue with <span className="h-px flex-1 bg-slate-200" /></div>
-          <SocialButton />
+          {/* <div className="my-8 flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400"><span className="h-px flex-1 bg-slate-200" /> Or continue with <span className="h-px flex-1 bg-slate-200" /></div> */}
+          {/* <SocialButton /> */}
           <p className="mt-8 text-center text-xs text-slate-500">By signing up, you agree to our <b>Terms of Service</b> and <b>Privacy Policy</b>.</p>
         </form>
       </section>

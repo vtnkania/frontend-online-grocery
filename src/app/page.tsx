@@ -16,7 +16,7 @@ import { getCategories, getProducts } from "@/services/product.service";
 import type { CatalogCategory, CatalogProduct, StoreLocation } from "@/types/product.type";
 
 const promos = [
-  { title: "Fresh deals delivered fast", text: "Save on produce, dairy, and pantry staples from the closest store.", tag: "WEEKLY PROMO", image: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80" },
+  { title: "Fresh deals delivered fast", text: "Save on produce, dairy, and pantry staples from the closest store.", tag: "", image: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80" },
   { title: "Breakfast essentials in one cart", text: "Milk, fruit, bread, and eggs ready for your morning routine.", tag: "MORNING BUNDLE", image: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?auto=format&fit=crop&w=1600&q=80" },
   { title: "Local vegetables picked fresh", text: "Explore crisp greens and everyday ingredients while stock lasts.", tag: "FRESH MARKET", image: "https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?auto=format&fit=crop&w=1600&q=80" },
 ];
@@ -47,7 +47,7 @@ function HomeInner() {
 
     Promise.all([
       getCategories({ ...params, limit: 4 }), 
-      getProducts({ ...params, limit: 4 })
+      getProducts({ ...params, limit: 8 })
     ])
       .then(([categoryResult, productResult]) => {
         setCategories(categoryResult?.data || []);
@@ -109,7 +109,7 @@ function HeroCarousel() {
               <img className="h-full w-full object-cover opacity-75" src={promo.image} alt={promo.title} />
               <div className="absolute inset-0 flex items-center px-8 md:px-16">
                 <div className="max-w-xl text-white">
-                  <span className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-bold">{promo.tag}</span>
+                  {/* <span className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-bold">{promo.tag}</span> */}
                   <h1 className="mt-5 text-4xl font-black leading-tight md:text-5xl">{promo.title}</h1>
                   <p className="mt-5 max-w-md leading-7 text-slate-100">{promo.text}</p>
                   <Link className="mt-8 inline-flex rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-800 shadow transition" href="/products">
@@ -247,11 +247,11 @@ function ReferFriend() {
     <section className="mx-auto mt-12 max-w-6xl px-5">
       <div className="overflow-hidden rounded-2xl bg-emerald-500 md:grid md:grid-cols-2 shadow-sm border border-emerald-600/20">
         <div className="p-10 text-white">
-          <h2 className="text-3xl font-black tracking-tight">Refer a friend & get Rp 20.000</h2>
-          <p className="mt-4 max-w-md leading-7 text-emerald-50">Share freshness with friends. They get a welcome voucher and you get store credit.</p>
-          <button className="mt-6 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-slate-900 shadow-md transition active:scale-[0.98]">
+          <h2 className="text-3xl font-black tracking-tight">Welcome to FreshMart!</h2>
+          <p className="mt-4 max-w-md leading-7 text-emerald-50">Discover fresh products, exclusive offers, and everything you need in one place.</p>
+          {/* <button className="mt-6 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-slate-900 shadow-md transition active:scale-[0.98]">
             Get Your Link
-          </button>
+          </button> */}
         </div>
         <img className="hidden h-full w-full object-cover mix-blend-multiply md:block" src="https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=900&q=80" alt="Friends cooking groceries" />
       </div>
