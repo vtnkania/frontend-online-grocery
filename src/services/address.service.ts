@@ -1,4 +1,4 @@
-const NEXT_PUBLIC_API_URL = 'http://localhost:8000/api/v1';
+const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 // 1. Ambil Semua Alamat (Ditambahkan parameter userId agar dinamis)
 export const getUserAddresses = async (userId: string) => {

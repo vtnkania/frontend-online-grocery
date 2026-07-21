@@ -26,16 +26,15 @@ export default function Navbar() {
     }
   }, [user, fetchCartCount]);
 
-  // Ambil daftar semua toko cabang dari API database
   useEffect(() => {
     getStores()
       .then((data) => setAllStores(data || []))
       .catch(() => setAllStores([]));
   }, []);
 
-  // Pemicu otomatis agar lokasi terisi fallback awal jika data koordinat kosong
+  // Hanya mengisi fallback toko teratas jika state benar-benar kosong dan tidak loading
   useEffect(() => {
-    if (!location.loading && !location.store && allStores.length > 0) {
+    if (!location.loading && !location.store && allStores.length > 0 && !location.isAutoLocation) {
       location.setManualStore(allStores[0]);
     }
   }, [location.loading, location.store, allStores, location]);
@@ -51,7 +50,6 @@ export default function Navbar() {
         </div>
         <div className="flex items-center justify-end gap-3 text-sm">
           
-          {/* 🚀 FIXED: Pembungkus Relative untuk jangkar penempatan posisi Dropdown Cabang */}
           <div className="relative">
             <button 
               onClick={() => setIsModalOpen(!isModalOpen)}
@@ -64,11 +62,9 @@ export default function Navbar() {
               <span className="text-[10px] text-emerald-600 underline font-black ml-0.5">(Ganti)</span>
             </button>
 
-            {/* 🚀 FIXED DROPDOWN BOX: Menggantikan modal fixed lama menjadi panel absolute melayang yang aman dari bug blur parent */}
             {isModalOpen && (
               <div className="absolute right-0 top-full mt-2 w-72 rounded-xl bg-white p-4 shadow-xl border border-slate-200/60 flex flex-col z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 
-                {/* Bagian Atas Dropdown */}
                 <div className="flex items-center justify-between mb-1.5">
                   <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1">
                     🏢 Pilih Cabang Toko
@@ -80,11 +76,34 @@ export default function Navbar() {
                     <X className="size-3.5" />
                   </button>
                 </div>
+
+                {/* 🎯 LOGIKA CENTANG LOKASI SAYA YANG LO MINTA */}
+                <div className="flex items-center gap-2 pb-2.5 mb-2 border-b border-slate-100">
+                  <input 
+                    type="checkbox"
+                    id="useMyLocationToggle"
+                    checked={location.isAutoLocation}
+                    onChange={(e) => {
+                      location.setAutoLocationMode(e.target.checked);
+                      if (e.target.checked) {
+                        toast.info("Mencari titik koordinat GPS terdekat...");
+                      } else {
+                        toast.success("Mode manual aktif. Silakan pilih cabang.");
+                      }
+                    }}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 size-3.5 cursor-pointer accent-emerald-600"
+                  />
+                  <label htmlFor="useMyLocationToggle" className="text-[11px] font-bold text-slate-700 cursor-pointer select-none flex items-center gap-0.5">
+                    📍 Gunakan Lokasi Saya (Auto GPS)
+                  </label>
+                </div>
+
                 <p className="text-[10px] text-slate-400 font-medium leading-normal mb-3">
-                  Pilih lokasi cabang terdekat tujuan Anda untuk mendapatkan estimasi stok barang & ongkir yang akurat.
+                  {location.isAutoLocation 
+                    ? "Sistem sedang mengunci lokasi Anda secara otomatis via GPS browser." 
+                    : "Pilih lokasi cabang secara manual untuk melihat katalog produk cabang tersebut."}
                 </p>
                 
-                {/* Daftar Iterasi Toko Cabang */}
                 <div className="max-h-60 overflow-y-auto space-y-1.5 pr-0.5 custom-scrollbar">
                   {allStores.length === 0 ? (
                     <p className="text-[11px] text-slate-400 text-center py-2">Data toko tidak tersedia.</p>
