@@ -36,33 +36,36 @@ function HomeInner() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [, setStore] = useState<StoreLocation | null>(null);
 
-  // Ambil data Kategori & Produk berdasarkan koordinat toko terupdate
-  useEffect(() => {
-    if (location.loading) return;
-    
-    const params = { 
-      latitude: location.latitude, 
-      longitude: location.longitude 
-    };
+useEffect(() => {
+  if (location.loading) return;
+  
+  const params = { 
+    latitude: location.latitude, 
+    longitude: location.longitude 
+  };
 
-    Promise.all([
-      getCategories({ ...params, limit: 4 }), 
-      getProducts({ ...params, limit: 8 })
-    ])
-      .then(([categoryResult, productResult]) => {
-        setCategories(categoryResult?.data || []);
-        setProducts(productResult?.data || []);
-        
-        const nearestStore = location.store ?? productResult?.meta?.nearestStore ?? categoryResult?.nearestStore ?? null;
-        if (nearestStore && !location.store) {
+  Promise.all([
+    getCategories({ ...params, limit: 4 }), 
+    getProducts({ ...params, limit: 8 })
+  ])
+    .then(([categoryResult, productResult]) => {
+      setCategories(categoryResult?.data || []);
+      setProducts(productResult?.data || []);
+      
+      const nearestStore = location.store ?? productResult?.meta?.nearestStore ?? categoryResult?.nearestStore ?? null;
+      if (nearestStore && !location.store) {
+        if (location.isAutoLocation) {
+          location.setAutomatedLocation({ store: nearestStore, source: "browser" });
+        } else {
           location.setManualStore(nearestStore);
         }
-      })
-      .catch(() => { 
-        setCategories([]); 
-        setProducts([]); 
-      });
-  }, [location.loading, location.latitude, location.longitude, location.store, location]);
+      }
+    })
+    .catch(() => { 
+      setCategories([]); 
+      setProducts([]); 
+    });
+}, [location.loading, location.latitude, location.longitude, location.store, location.isAutoLocation, location]);
 
   return (
     <main className="min-h-screen bg-[#f7f8fd] text-slate-950">

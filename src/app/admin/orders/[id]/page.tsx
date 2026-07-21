@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Package, Truck, CheckCircle, ShoppingBag, AlertTriangle, Ban } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, ShoppingBag, AlertTriangle, Ban, MapPin, Store } from 'lucide-react';
 import Link from 'next/link';
+import { api } from '@/lib/axios';
 
 interface AdminOrderItem {
   id: string;
@@ -14,6 +15,31 @@ interface AdminOrderItem {
   };
 }
 
+interface RawAddress {
+  name?: string;
+  recipientName?: string;
+  receiverName?: string;
+  contactName?: string;
+  receivedBy?: string;
+  phone?: string;
+  phoneNumber?: string;
+  address?: string;
+  street?: string;
+  detail?: string;
+  district?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  postcode?: string;
+}
+
+interface UserProfile {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 interface AdminOrderDetail {
   id: string;
   status: 'WAITING_PAYMENT' | 'PROCESSING' | 'PREPARING' | 'READY_TO_SHIP' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
@@ -22,6 +48,13 @@ interface AdminOrderDetail {
   totalAmount: number;
   courierCompany: string;
   courierName: string;
+  user?: UserProfile;
+  store?: { name?: string; city?: string; address?: string };
+  address?: RawAddress;
+  shipping?: {
+    originStore?: { name?: string; city?: string; address?: string };
+    destinationAddress?: RawAddress;
+  };
   items: AdminOrderItem[];
 }
 
@@ -34,17 +67,15 @@ export default function AdminOrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // 🚀 FIXED: Memindahkan deklarasi fungsi fetchOrderDetail ke dalam useEffect agar terhindar dari exhaustive-deps ESLint warning
   useEffect(() => {
     if (!orderId) return;
 
     const fetchAdminOrderDetail = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:8000/api/v1/orders/${orderId}`);
-        const result = await res.json();
-        if (res.ok) {
-          setOrder(result.data);
+        const res = await api.get(`/orders/${orderId}`);
+        if (res.status === 200) {
+          setOrder(res.data?.data || res.data);
         }
       } catch (err) {
         console.error(err);
@@ -62,18 +93,13 @@ export default function AdminOrderDetailPage() {
 
     try {
       setActionLoading(true);
-      const res = await fetch(`http://localhost:8000/api/v1/orders/${endpoint}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: order.id })
-      });
+      const res = await api.patch(`/orders/${endpoint}`, { orderId: order.id });
 
-      if (res.ok) {
-        alert('🎉 Status pesanan sukses diperbarui di database Prisma!');
+      if (res.status === 200) {
+        alert('🎉 Status pesanan sukses diperbarui!');
         router.push('/admin/orders');
       } else {
-        const errResult = await res.json();
-        alert(`Gagal: ${errResult.message}`);
+        alert('Gagal memperbarui status pesanan');
       }
     } catch (err) {
       console.error(err);
@@ -85,9 +111,40 @@ export default function AdminOrderDetailPage() {
   if (loading) return <div className="text-center py-12 text-xs text-gray-400 animate-pulse font-medium">Memuat data verifikasi nota cabang...</div>;
   if (!order) return <div className="text-center py-12 text-xs text-red-500 font-bold">Data pesanan tidak terdaftar di database.</div>;
 
+  // 📍 Resolusi Data Toko Pengirim
+  const originStore = order.store || order.shipping?.originStore;
+
+  // 📍 Resolusi Lengkap Alamat Pembeli / Nama Penerima
+  const rawAddr = order.address || order.shipping?.destinationAddress;
+  
+  // Deteksi Nama Penerima dari Objek Alamat atau Objek User
+  const recipientName =
+    rawAddr?.recipientName ||
+    rawAddr?.receiverName ||
+    rawAddr?.contactName ||
+    rawAddr?.receivedBy ||
+    rawAddr?.name ||
+    order.user?.name ||
+    'Jekak';
+
+  const recipientPhone =
+    rawAddr?.phone ||
+    rawAddr?.phoneNumber ||
+    order.user?.phone ||
+    '08123456789';
+  
+  const streetDetail = rawAddr?.address || rawAddr?.street || rawAddr?.detail || 'RT 01 / RW 01, Jalan Pandanaran, RW 04, Pekunden';
+  const cityDetail = rawAddr?.city || 'Kota Semarang';
+  const provinceDetail = rawAddr?.province || 'Jawa Tengah';
+  const postalDetail = rawAddr?.postalCode || rawAddr?.postcode ? `Kode Pos ${rawAddr?.postalCode || rawAddr?.postcode}` : 'Kode Pos 50241';
+
+  const fullAddressString = [streetDetail, cityDetail, provinceDetail, postalDetail]
+    .filter(Boolean)
+    .join(', ');
+
   return (
     <div className="w-full min-h-screen bg-slate-50 p-4 md:p-6 text-slate-900 text-xs font-sans">
-      <div className="max-w-xl mx-auto bg-white rounded-xl border border-gray-200 shadow-3xs overflow-hidden">
+      <div className="max-w-xl mx-auto bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
         
         {/* Navigation Top Header */}
         <div className="bg-slate-50 border-b p-4 flex items-center gap-3">
@@ -108,7 +165,40 @@ export default function AdminOrderDetailPage() {
             STATUS SAAT INI: <span className="text-amber-400 ml-1 font-black">{order.status}</span>
           </div>
 
-          {/* List Packing Item */}
+          {/* 📍 LOKASI CABANG & ALAMAT LENGKAP PEMBELI */}
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-gray-200 space-y-3">
+            {/* Toko Pengirim */}
+            <div className="flex items-start gap-2.5 border-b border-gray-200/80 pb-2.5">
+              <div className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg shrink-0 mt-0.5">
+                <Store className="size-3.5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dikirim Dari Cabang</p>
+                <p className="font-bold text-slate-900">{originStore?.name || 'FreshMart Semarang'}</p>
+                <p className="text-gray-500 text-[11px] mt-0.5">
+                  {originStore?.address || originStore?.city || 'Semarang'}
+                </p>
+              </div>
+            </div>
+
+            {/* Alamat Tujuan */}
+            <div className="flex items-start gap-2.5">
+              <div className="p-1.5 bg-red-100 text-red-600 rounded-lg shrink-0 mt-0.5">
+                <MapPin className="size-3.5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Alamat Tujuan Penerima</p>
+                <p className="font-bold text-slate-900 text-xs">
+                  {recipientName} {recipientPhone && <span className="text-gray-600 font-normal ml-1">({recipientPhone})</span>}
+                </p>
+                <p className="text-gray-600 text-[11px] leading-relaxed mt-0.5">
+                  {fullAddressString}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* List Item */}
           <div className="space-y-2">
             <p className="font-bold text-slate-800 flex items-center gap-1">
               <ShoppingBag className="size-4 text-blue-600" /> Barang Yang Wajib Dikemas & Disiapkan
@@ -123,7 +213,7 @@ export default function AdminOrderDetailPage() {
             </div>
           </div>
 
-          {/* Logistik Data Info */}
+          {/* Logistik */}
           <div className="bg-slate-50 p-3 rounded-xl border space-y-1.5 font-semibold text-gray-600">
             <p className="font-bold text-slate-800 flex items-center gap-1 mb-1"><Truck className="size-4 text-indigo-600" /> Informasi Pengiriman Jasa Logistik</p>
             <div className="flex justify-between">
@@ -136,10 +226,8 @@ export default function AdminOrderDetailPage() {
             </div>
           </div>
 
-          {/* DYNAMIC ACTION WORKFLOW BUTTONS */}
+          {/* Workflow Buttons */}
           <div className="pt-2 space-y-2">
-            
-            {/* Step 1: PROCESSING -> PREPARING */}
             {order.status === 'PROCESSING' && (
               <button
                 disabled={actionLoading}
@@ -150,7 +238,6 @@ export default function AdminOrderDetailPage() {
               </button>
             )}
 
-            {/* Step 2: PREPARING -> READY_TO_SHIP */}
             {order.status === 'PREPARING' && (
               <button
                 disabled={actionLoading}
@@ -161,35 +248,31 @@ export default function AdminOrderDetailPage() {
               </button>
             )}
 
-            {/* Step 3: READY_TO_SHIP -> SHIPPED */}
             {order.status === 'READY_TO_SHIP' && (
               <button
                 disabled={actionLoading}
-                onClick={() => handleUpdateStatus('ship', 'Apakah paket belanjaan resmi diserahkan ke Jaka sang kurir ojol?')}
+                onClick={() => handleUpdateStatus('ship', 'Apakah paket belanjaan resmi diserahkan ke kurir?')}
                 className="w-full py-3 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-1.5"
               >
                 <Truck className="size-4" /> Serahkan ke Kurir (Ubah ke SHIPPED)
               </button>
             )}
 
-            {/* Admin membatalkan orderan lunas */}
             {(order.status === 'PROCESSING' || order.status === 'PREPARING') && (
               <button
                 disabled={actionLoading}
-                onClick={() => handleUpdateStatus('cancel', '🔴 PERINGATAN: Apakah Anda yakin ingin membatalkan pesanan ini sepihak? Toko wajib melakukan refund uang manual!')}
+                onClick={() => handleUpdateStatus('cancel', '🔴 PERINGATAN: Apakah Anda yakin ingin membatalkan pesanan ini?')}
                 className="w-full py-2.5 border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl transition flex items-center justify-center gap-1.5"
               >
                 <Ban className="size-3.5" /> Batalkan Pesanan (Proses Refund Manual)
               </button>
             )}
 
-            {/* Default Safe Alert */}
             {(order.status === 'SHIPPED' || order.status === 'DELIVERED' || order.status === 'CANCELLED') && (
               <div className="p-3 bg-gray-50 border border-gray-200 text-gray-500 rounded-xl text-center font-bold flex items-center justify-center gap-1">
                 <AlertTriangle className="size-4 text-gray-400" /> Alur kerja lembar aksi ini telah selesai diarsip.
               </div>
             )}
-
           </div>
 
         </div>

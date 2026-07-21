@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { addToCart } from '@/services/cart.service';
 import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/hooks/useCart'; // 🚀 FIXED: Menambahkan import global store cart
 
 interface ProductCardProps {
   product: {
@@ -15,13 +16,14 @@ interface ProductCardProps {
     price: string;
     imageUrl?: string | null;
   };
-  storeId: string; // Wajib dikirim dari halaman landing page terdekat
-  stock: number;   // Diambil dari data inventory toko cabang tersebut
+  storeId: string; // Wajib dikirim dari halaman landing page terdekat[cite: 13]
+  stock: number;   // Diambil dari data inventory toko cabang tersebut[cite: 13]
 }
 
 export default function ProductCard({ product, storeId, stock }: ProductCardProps) {
   const [loading, setLoading] = useState(false);
   const user = useAuth((state) => state.user);
+  const fetchCartCount = useCart((state) => state.fetchCartCount); // 🚀 FIXED: Inisialisasi fungsi pemicu re-render counter navbar
   const router = useRouter();
 
   const handleAddToCart = async () => {
@@ -36,6 +38,7 @@ export default function ProductCard({ product, storeId, stock }: ProductCardProp
     try {
       setLoading(true);
       await addToCart(product.id, storeId, 1);
+      await fetchCartCount(); // 🚀 FIXED: Memperbarui angka indikator merah navbar secara real-time pasca sukses
       toast.success('Produk berhasil dimasukkan ke keranjang.');
     } catch {
       toast.error('Gagal menambahkan produk ke keranjang.');
@@ -66,7 +69,7 @@ export default function ProductCard({ product, storeId, stock }: ProductCardProp
           Rp {Number(product.price).toLocaleString('id-ID')}
         </p>
 
-        {/* Tombol Add to Cart dengan proteksi pengecekan ketersediaan stok */}
+        {/* Tombol Add to Cart dengan proteksi pengecekan ketersediaan stok[cite: 13] */}
         <button
           onClick={handleAddToCart}
           disabled={loading || isOutOfStock}
