@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BarChart3, PackageCheck, ReceiptText, Users } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { BarChart3, Download, LoaderCircle, PackageCheck, ReceiptText, Users } from "lucide-react";
 import { toast } from "sonner";
 import AdminMetricCard from "@/components/admin/AdminMetricCard";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import { Button } from "@/components/ui/button";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { exportDashboardToExcel } from "@/lib/dashboard-export";
 import { getAdminDashboard } from "@/services/admin/dashboard-admin.service";
 import type { AdminDashboardData, DashboardCategorySale, DashboardTopProduct, DashboardTrendPoint } from "@/types/admin.type";
 
@@ -19,14 +23,46 @@ const emptyDashboard: AdminDashboardData = {
 export default function AdminDashboardPage() {
   const [dashboard, setDashboard] = useState(emptyDashboard);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    getAdminDashboard().then(setDashboard).catch(() => toast.error("Failed to load dashboard data.")).finally(() => setLoading(false));
+    getAdminDashboard()
+      .then((data) => {
+        setDashboard(data);
+        setLoadFailed(false);
+      })
+      .catch(() => {
+        setLoadFailed(true);
+        toast.error("Failed to load dashboard data.");
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportDashboardToExcel(dashboard);
+      toast.success("Dashboard Excel downloaded.");
+    } catch {
+      toast.error("Failed to export dashboard data.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <>
-      <AdminPageHeader title="Analytics Overview" subtitle="Real-time performance tracking for FreshMart ecosystem." />
+      <AdminPageHeader
+        title="Analytics Overview"
+        subtitle="Real-time performance tracking for FreshMart ecosystem."
+        actions={
+          <Button className="bg-emerald-700 hover:bg-emerald-800" size="lg" disabled={loading || loadFailed || exporting} onClick={handleExport}>
+            {exporting ? <LoaderCircle className="animate-spin" /> : <Download />}
+            {exporting ? "Preparing Excel..." : "Download Excel"}
+          </Button>
+        }
+      />
       <section className="space-y-6 p-5">
         <MetricGrid data={dashboard} />
         {loading && <p className="rounded-lg bg-white p-4 text-sm text-slate-500 ring-1 ring-slate-200">Loading dashboard data...</p>}
@@ -53,30 +89,50 @@ function MetricGrid({ data }: { data: AdminDashboardData }) {
 }
 
 function RevenueTrends({ rows }: { rows: DashboardTrendPoint[] }) {
-  const max = Math.max(...rows.map((row) => row.revenue), 1);
   return (
     <article className="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-200">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div><h2 className="text-2xl font-black">Revenue Trends</h2><p className="text-slate-600">Daily sales performance over the last 30 days.</p></div>
         <div className="rounded-lg bg-blue-50 p-1 text-sm font-bold"><span className="rounded-md bg-white px-4 py-2 text-emerald-800">30 Days</span></div>
       </div>
-      <div className="flex h-80 items-end gap-1 overflow-hidden rounded-lg border border-emerald-100 bg-[radial-gradient(#b7d8cb_1px,transparent_1px)] p-4 [background-size:24px_24px]">
-        {rows.length ? rows.map((row) => <TrendBar row={row} max={max} key={row.date} />) : <EmptyState label="No revenue data yet." />}
+      <div className="grid h-80 place-items-center overflow-hidden rounded-lg border border-emerald-100 bg-emerald-50/30 p-3">
+        {rows.length ? <RevenueAreaChart rows={rows} /> : <EmptyState label="No revenue data yet." />}
       </div>
     </article>
   );
 }
 
-function TrendBar({ row, max }: { row: DashboardTrendPoint; max: number }) {
-  const height = Math.max(4, (row.revenue / max) * 100);
-  const label = new Date(row.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
+function RevenueAreaChart({ rows }: { rows: DashboardTrendPoint[] }) {
   return (
-    <div className="group relative flex min-w-2 flex-1 items-end justify-center">
-      <div className="w-full rounded-t bg-emerald-600 transition group-hover:bg-emerald-800" style={{ height: `${height}%` }} />
-      <div className="pointer-events-none absolute bottom-full mb-2 hidden rounded-lg bg-slate-950 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
-        <p className="font-bold">{label}</p><p>{formatCurrency(row.revenue)}</p><p>{row.orders} orders</p>
-      </div>
-    </div>
+    <ChartContainer config={revenueChartConfig} className="h-full w-full aspect-auto">
+      <AreaChart accessibilityLayer data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
+        <defs>
+          <linearGradient id="revenue-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.42} />
+            <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0.04} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid vertical={false} strokeDasharray="4 4" />
+        <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} minTickGap={24} tickFormatter={formatTrendDate} />
+        <YAxis axisLine={false} tickLine={false} tickMargin={8} width={72} domain={[0, "auto"]} tickFormatter={(value) => `Rp ${formatCompact(Number(value))}`} />
+        <ChartTooltip
+          cursor={{ stroke: "#6ee7b7", strokeDasharray: "4 4" }}
+          content={
+            <ChartTooltipContent
+              indicator="line"
+              labelFormatter={(label) => formatTrendDate(String(label))}
+              formatter={(value, _name, item) => (
+                <div className="grid min-w-44 gap-1.5">
+                  <p className="flex items-center justify-between gap-6"><span className="text-muted-foreground">Revenue</span><strong>{formatCurrency(Number(value))}</strong></p>
+                  <p className="flex items-center justify-between gap-6"><span className="text-muted-foreground">Orders</span><strong>{Number(item.payload?.orders ?? 0).toLocaleString("id-ID")}</strong></p>
+                </div>
+              )}
+            />
+          }
+        />
+        <Area dataKey="revenue" type="monotone" fill="url(#revenue-fill)" stroke="var(--color-revenue)" strokeWidth={2.5} activeDot={{ r: 5 }} />
+      </AreaChart>
+    </ChartContainer>
   );
 }
 
@@ -128,8 +184,10 @@ function EmptyState({ label }: { label: string }) {
 }
 
 const colors = ["#047857", "#2563eb", "#f97316", "#dc2626", "#7c3aed", "#0f172a"];
+const revenueChartConfig = { revenue: { label: "Revenue", color: "#047857" } } satisfies ChartConfig;
 const formatCurrency = (value: number) => `Rp ${Math.round(value).toLocaleString("id-ID")}`;
 const formatCompact = (value: number) => new Intl.NumberFormat("id-ID", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+const formatTrendDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
 const categoryConic = (categories: DashboardCategorySale[]) => {
   if (!categories.length) return "conic-gradient(#d8e2dd 0 100%)";
   let start = 0;
